@@ -36,9 +36,13 @@
  */
 package org.orbisgis.coreutils
 
+import org.geotools.data.FeatureSource
 import org.geotools.data.Query
 import org.geotools.data.shapefile.ShapefileDataStore
 import org.junit.jupiter.api.Test
+import org.geotools.data.DataStore
+import org.opengis.feature.simple.SimpleFeature
+import org.opengis.feature.simple.SimpleFeatureType
 
 /**
  * Test class dedicated to {@link DataStoreUtils}.
@@ -58,4 +62,37 @@ class DataStoreUtilsTest {
         assert contents
         assert 1234 == contents.getCount( Query.ALL )
     }
+
+    @Test
+    void toDataStoreTest() {
+        def url = this.class.getResource("landcover2000.shp")
+        def uri = url.toURI()
+        def file = new File(uri)
+        def path = file.absolutePath
+
+        def ds = url.toDataStore()
+        assert ds
+        assert ds in DataStore
+        assert ds.landcover2000
+
+        ds = uri.toDataStore()
+        assert ds
+        assert ds in DataStore
+        assert ds.landcover2000
+
+        ds = file.toDataStore()
+        assert ds
+        assert ds in DataStore
+        assert ds.landcover2000
+
+        ds = path.toDataStore()
+        assert ds
+        assert ds in DataStore
+        assert ds.landcover2000
+
+        String typeName = ds.getTypeNames()[0];
+        def featureSource = ds.getFeatureSource(typeName);
+        assert 1234 == featureSource.getCount(Query.ALL)
+    }
+
 }

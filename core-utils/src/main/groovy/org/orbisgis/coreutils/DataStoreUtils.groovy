@@ -36,13 +36,14 @@
  */
 package org.orbisgis.coreutils
 
-import org.geotools.data.DataStore
-
 import org.geotools.data.simple.SimpleFeatureSource
+import org.geotools.data.DataStore
+import org.geotools.data.DataStoreFinder
+
 /**
  * Utility script used as extension module adding methods to {@link DataStore} class.
  *
- * @author Erwan Bocher (CNRS 2020)
+ * @author Erwan Bocher (CNRS 2020 - 2021)
  * @author Sylvain PALOMINOS (UBS chaire GEOTERA 2020)
  */
 
@@ -54,4 +55,54 @@ import org.geotools.data.simple.SimpleFeatureSource
  */
 static SimpleFeatureSource propertyMissing(DataStore ds, String name) {
     return ds.getFeatureSource(name)
+}
+
+/**
+ * Returns the DataStore from the given file path.
+ *
+ * @param path Path to the file to open as a {@link DataStore}
+ * @return A {@link DataStore} created from the given path.
+ */
+static DataStore toDataStore(String path) {
+    DataStoreFinder.getDataStore([url: new File(path).toURI().toURL()])
+}
+
+/**
+ * Returns the DataStore from the given file url.
+ *
+ * @param url Url to the file to open as a {@link DataStore}
+ * @return A {@link DataStore} created from the given url.
+ */
+static DataStore toDataStore(URL url) {
+    DataStoreFinder.getDataStore([url: url])
+}
+
+/**
+ * Returns the DataStore from the given file.
+ *
+ * @param file File to open as a {@link DataStore}
+ * @return A {@link DataStore} created from the given file.
+ */
+static DataStore toDataStore(File file) {
+    DataStoreFinder.getDataStore([url: file.toURI().toURL()])
+}
+
+/**
+ * Returns the DataStore from the given URI.
+ *
+ * @param uri URI to the file to open as a {@link DataStore}
+ * @return A {@link DataStore} created from the given URI.
+ */
+static DataStore toDataStore(URI uri) {
+    DataStoreFinder.getDataStore([url: uri.toURL()])
+}
+
+/**
+ * Returns the DataStore from a list of available parameters
+ *
+ * @param params Map of parameters to open as a {@link DataStore}
+ * @return A {@link DataStore} created from the given MAP.
+ */
+static DataStore toDataStore(Map params) {
+    DataStoreFinder.getDataStore(params)
 }

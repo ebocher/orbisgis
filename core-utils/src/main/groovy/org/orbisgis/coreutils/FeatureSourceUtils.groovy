@@ -42,6 +42,8 @@ import org.geotools.feature.FeatureCollection
 import org.opengis.feature.Feature
 import org.opengis.feature.type.FeatureType
 import org.opengis.filter.Filter
+import org.apache.commons.io.FilenameUtils
+import org.geotools.data.DataStoreFinder
 
 
 /**
@@ -78,4 +80,82 @@ static <T extends FeatureType, F extends Feature> FeatureCollection<T, F> getFea
  */
 static <T extends FeatureType, F extends Feature> FeatureCollection<T, F>  getFeatureCollection(FeatureSource<T, F> fs, Filter filter) {
     fs.getFeatures(filter)
+}
+
+
+/**
+ * Returns the FeatureSource from the given file path.
+ *
+ * @param path Path to the file to open as a {@link FeatureSource}
+ * @return A {@link FeatureSource} created from the given path.
+ */
+static FeatureSource toFeatureSource(String path) {
+    DataStoreFinder.getDataStore([url: new File(path).toURI().toURL()])."${FilenameUtils.getBaseName(path)}"
+}
+
+/**
+ * Returns the FeatureSource from the given file url.
+ *
+ * @param url Url to the file to open as a {@link FeatureSource}
+ * @return A {@link FeatureSource} created from the given url.
+ */
+static FeatureSource toFeatureSource(URL url) {
+    DataStoreFinder.getDataStore([url: url])."${FilenameUtils.getBaseName(url.path)}"
+}
+
+/**
+ * Returns the FeatureSource from the given file.
+ *
+ * @param file File to open as a {@link FeatureSource}
+ * @return A {@link FeatureSource} created from the given file.
+ */
+static FeatureSource toFeatureSource(File file) {
+    DataStoreFinder.getDataStore([url: file.toURI().toURL()])."${FilenameUtils.getBaseName(file.path)}"
+}
+
+/**
+ * Returns the FeatureSource from the given URI.
+ *
+ * @param uri URI to the file to open as a {@link FeatureSource}
+ * @return A {@link FeatureSource} created from the given URI.
+ */
+static FeatureSource toFeatureSource(URI uri) {
+    DataStoreFinder.getDataStore([url: uri.toURL()])."${FilenameUtils.getBaseName(uri.path)}"
+}
+
+/**
+ * Returns the number of features
+ * @param fs the {@link FeatureSource}
+ * @return the number of features
+ */
+static int getCount(FeatureSource fs){
+    return fs.getCount(Query.ALL);
+}
+
+/**
+ * Returns the epsg code of the {@link FeatureSource}
+ * @param fs the {@link FeatureSource}
+ * @return the number of features
+ */
+static int getSrid(FeatureSource fs){
+    return fs.getSchema().getCoordinateReferenceSystem().getName().getCode() as int
+}
+
+/**
+ * Iterate over all features with options
+ * expression and filter
+ *
+ * @param fs
+ * @param closure
+ */
+static void eachFeature(FeatureSource fs, List expressions =null, def filter=null , Closure closure) {
+    def featureIterator = fs.getFeatures(Query.ALL).getFeatureIterator()
+    try {
+        while(featureIterator.hasNext()) {
+            Feature f = featureIterator.next()
+            closure.call(f)
+        }
+    } finally {
+        featureIterator.close()
+    }
 }
