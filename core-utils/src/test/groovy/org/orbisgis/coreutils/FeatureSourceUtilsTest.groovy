@@ -67,9 +67,11 @@ class FeatureSourceUtilsTest {
         def url = this.class.getResource("landcover2000.shp")
         def fs = url.toFeatureSource()
         assert fs
-        fs.eachFeature{ feature ->
-            println feature
+        int count=0
+        fs.eachFeature { feature ->
+            count++
         }
+        assert fs.count==count
     }
 
     @Test
@@ -77,18 +79,8 @@ class FeatureSourceUtilsTest {
         def url = this.class.getResource("landcover2000.shp")
         def fs = url.toFeatureSource()
         assert fs
-        fs.eachFeature{ feature ->
-            println feature
-        }
-    }
-
-    @Test
-    void eachFeatureSourceExpression() {
-        def url = this.class.getResource("landcover2000.shp")
-        def fs = url.toFeatureSource()
-        assert fs
-        fs.eachFeature{ feature ->
-            println feature
+        fs.eachFeature("gid = 1233"){ feature ->
+            assert 1233 ==feature.gid
         }
     }
 
@@ -97,8 +89,8 @@ class FeatureSourceUtilsTest {
         def url = this.class.getResource("landcover2000.shp")
         def fs = url.toFeatureSource()
         assert fs
-        fs.eachFeature{ feature ->
-            println feature.the_geom.buffer(12)
+        fs.withExpression("gid +12 as new_gid").eachFeature("gid = 1234"){ feature ->
+            println 12246 == feature.new_gid
         }
     }
 }

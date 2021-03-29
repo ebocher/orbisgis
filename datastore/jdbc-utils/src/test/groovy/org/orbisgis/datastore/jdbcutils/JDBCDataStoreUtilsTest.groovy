@@ -42,7 +42,6 @@ import org.geotools.jdbc.JDBCDataStore
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 
-import static org.orbisgis.datastore.jdbcutils.JDBCDataStoreUtils.out
 /**
  * Test class dedicated to {@link org.orbisgis.datastore.jdbcutils.JDBCDataStoreUtils}.
  *

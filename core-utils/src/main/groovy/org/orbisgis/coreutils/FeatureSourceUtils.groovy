@@ -45,6 +45,7 @@ import org.geotools.feature.FeatureCollection
 import org.geotools.filter.text.cql2.CQL
 import org.geotools.filter.text.ecql.ECQL
 import org.opengis.feature.Feature
+import org.opengis.feature.simple.SimpleFeatureType
 import org.opengis.feature.type.FeatureType
 import org.opengis.filter.Filter
 import org.apache.commons.io.FilenameUtils
@@ -146,6 +147,7 @@ static int getSrid(FeatureSource fs){
     return fs.getSchema().getCoordinateReferenceSystem().getIdentifiers().first().getCode() as int
 }
 
+
 /**
  * Iterate over all features with options
  * expression and filter
@@ -153,41 +155,82 @@ static int getSrid(FeatureSource fs){
  * @param fs
  * @param closure
  */
-static void eachFeature(FeatureSource fs, Map expressions =null, def filter=null , Closure closure) {
-    Filter filter_gt
-    if(filter){
-         filter_gt = CQL.toFilter(filter);
-    }
-    if(expressions){
-        List<Definition> definitions = new ArrayList<Definition>();
-        expressions.each {entry ->
-            if(entry.key && entry.value){
-                definitions.add(new Definition(entry.key, ECQL.toExpression(entry.value)))
-            }
+static FeatureSource withExpression(FeatureSource fs, String expression) {
+    if(expression) {
+        List<Definition> definitions = SQLToExpression.convertToDefinition(expression)
+        if (definitions) {
+            return TransformFactory.transform(fs, fs.getName(), definitions)
         }
-        if(definitions){
-        SimpleFeatureSource transformed = TransformFactory.transform(fs, fs.getName(), definitions)
-
-        def featureIterator = transformed.getFeatures(filter_gt).getFeatureIterator()
+    }
+    return fs
+}
+/**
+ * Iterate over all features with a filter
+ *
+ * @param fs
+ * @param closure
+ */
+static void eachFeature(FeatureSource fs, String filter = null , Closure closure) {
+    if (filter) {
+        def featureIterator = fs.getFeatures(CQL.toFilter(filter)).getFeatureIterator()
         try {
-            while(featureIterator.hasNext()) {
+            while (featureIterator.hasNext()) {
                 Feature f = featureIterator.next()
                 closure.call(f)
             }
         } finally {
             featureIterator.close()
         }
-        }else{
-            return
+    } else {
+        def featureIterator = fs.getFeatures(Query.ALL).getFeatureIterator()
+        try {
+            while (featureIterator.hasNext()) {
+                Feature f = featureIterator.next()
+                closure.call(f)
+            }
+        } finally {
+            featureIterator.close()
         }
     }
-    def featureIterator = fs.getFeatures(Query.ALL).getFeatureIterator()
-    try {
-        while(featureIterator.hasNext()) {
-            Feature f = featureIterator.next()
-            closure.call(f)
-        }
-    } finally {
-        featureIterator.close()
-    }
+}
+
+/***
+ *
+ * @param fs
+ * @param name
+ * @return
+ */
+static boolean hasColumn(FeatureSource fs, String name){
+    return fs.getSchema().getDescriptor(name)
+}
+
+/***
+ *
+ * @param fs
+ * @param name
+ * @return
+ */
+static boolean hasColumn(SimpleFeatureType simpleFeatureType, String name, Class<?> clazz ){
+    def descriptor = simpleFeatureType.getDescriptor(name)
+    return descriptor?clazz.isAssignableFrom(descriptor.type.binding):false
+}
+
+/***
+ *
+ * @param fs
+ * @param name
+ * @return
+ */
+static boolean hasColumn(FeatureSource fs,String name,Class<?> clazz ){
+    return hasColumn(fs.getSchema(), name, clazz)
+}
+
+/***
+ *
+ * @param columnMap
+ * @return
+ */
+static boolean hasColumns(FeatureSource fs, Map<String, Class<?>> columnWithType) {
+    def schema = fs.getSchema()
+    return columnWithType.entrySet().stream().allMatch(entry -> hasColumn(schema,entry.getKey(), entry.getValue()));
 }

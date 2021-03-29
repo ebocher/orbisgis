@@ -3,6 +3,20 @@ package org.orbisgis.datastore.h2gis
 import org.apache.commons.dbcp.BasicDataSource
 import org.geotools.data.Query
 import org.junit.jupiter.api.Test
+import org.locationtech.jts.geom.Geometry
+import org.locationtech.jts.geom.Point
+
+import java.sql.SQLException
+import java.sql.Time
+
+import static org.junit.jupiter.api.Assertions.assertEquals
+import static org.junit.jupiter.api.Assertions.assertFalse
+import static org.junit.jupiter.api.Assertions.assertNotNull
+import static org.junit.jupiter.api.Assertions.assertNotNull
+import static org.junit.jupiter.api.Assertions.assertNull
+import static org.junit.jupiter.api.Assertions.assertNull
+import static org.junit.jupiter.api.Assertions.assertTrue
+import static org.junit.jupiter.api.Assertions.assertTrue
 
 /**
  * Test class dedicated to {@link org.orbisgis.datastore.h2gis.H2GIS}
@@ -77,4 +91,94 @@ class H2GISTest {
         assert new File("${PATH}.mv.db").exists()
     }
 
+    @Test
+    void testGetFeatureSource() throws SQLException {
+        def h2GIS = H2GIS.open('./target/loadH2GIS')
+        assertNotNull h2GIS
+        def name = "TYPES"
+        h2GIS.execute("DROP TABLE IF EXISTS $name")
+        h2GIS.execute("CREATE TABLE TYPES (colint INT, colreal REAL, colint2 MEDIUMINT, coltime TIME, " +
+                "colvarchar VARCHAR2, colbool boolean, coltiny tinyint, colpoint GEOMETRY(POINT), colgeom GEOMETRY)")
+        assertNotNull(h2GIS.getFeatureSource("TYPES"))
+    }
+
+    @Test
+    void testColumnsType() throws SQLException {
+        def h2GIS = H2GIS.open('./target/loadH2GIS')
+        assertNotNull h2GIS
+        def name = "TYPES"
+        h2GIS.execute("DROP TABLE IF EXISTS $name")
+        h2GIS.execute("CREATE TABLE TYPES (colint INT, colreal REAL, colint2 MEDIUMINT, coltime TIME, " +
+                "colvarchar VARCHAR2, colbool boolean, coltiny tinyint, colpoint GEOMETRY(POINT), colgeom GEOMETRY)")
+        def fs = h2GIS.getFeatureSource("TYPES")
+        assertTrue(fs.hasColumn("COLINT", Integer.class))
+        assertFalse(fs.hasColumn("COLINT", Short.class))
+        assertTrue(fs.hasColumns(
+                [COLINT    : Integer.class,
+                 COLREAL   : Float.class,
+                 COLINT2   : Integer.class,
+                 COLTIME   : Time.class,
+                 COLVARCHAR: String.class,
+                 COLBOOL   : Boolean.class,
+                 COLTINY   : Short.class,
+                 COLPOINT  : Point.class,
+                 COLGEOM   : Geometry.class]))
+    }
+
+    @Test
+    void queryH2GIS() {
+        def h2GIS = H2GIS.open( './target/loadH2GIS')
+        h2GIS.execute("""
+                DROP TABLE IF EXISTS h2gis;
+                CREATE TABLE h2gis (id int, the_geom geometry(point));
+                INSERT INTO h2gis VALUES (1, 'POINT(10 10)'::GEOMETRY), (2, 'POINT(1 1)'::GEOMETRY);
+        """)
+        def concat = ""
+        h2GIS.eachRow "SELECT THE_GEOM FROM h2gis", { row -> concat += "$row.the_geom\n" }
+        assertEquals("POINT (10 10)\nPOINT (1 1)\n", concat)
+    }
+
+    @Test
+    void queryH2GISWithBatch() {
+        def h2GIS = H2GIS.open('./target/loadH2GIS')
+        h2GIS.execute("""
+                DROP TABLE IF EXISTS h2gis;
+                CREATE TABLE h2gis (id int);
+                INSERT INTO h2gis VALUES (1), (2);
+        """)
+        h2GIS.withBatch(1) { stmt ->
+            h2GIS.eachRow "SELECT id FROM h2gis", { row ->
+                stmt.addBatch """INSERT INTO  h2gis VALUES(${row.id+10})""" }
+        }
+        assertEquals(4, h2GIS.getFeatureSource("H2GIS").count)
+    }
+
+    @Test
+    void querySpatialTable() {
+        def h2GIS = H2GIS.open('./target/loadH2GIS')
+        h2GIS.execute("""
+                DROP TABLE IF EXISTS h2gis;
+                CREATE TABLE h2gis (gid int, the_geom geometry(point));
+                INSERT INTO h2gis VALUES (1, 'POINT(10 10)'::GEOMETRY), (2, 'POINT(1 1)'::GEOMETRY);
+        """)
+        def concat = ""
+        h2GIS.getFeatureSource( "H2GIS").eachFeature {
+            row -> concat += "$row.GID $row.THE_GEOM\n"
+        }
+        assertEquals("1 POINT (10 10)\n2 POINT (1 1)\n", concat)
+    }
+
+    @Test
+    void queryTableNames() {
+        def h2GIS = H2GIS.open('./target/loadH2GIS')
+        h2GIS.execute("""
+                DROP TABLE IF EXISTS table1, table2;
+                CREATE TABLE table1 (gid int, the_geom geometry(point));
+                CREATE TABLE table2 (gid int, the_geom geometry(point));
+        """)
+
+        def values = h2GIS.getTableNames()
+        assertTrue values.contains("LOADH2GIS.PUBLIC.TABLE1")
+        assertTrue values.contains("LOADH2GIS.PUBLIC.TABLE2")
+    }
 }
