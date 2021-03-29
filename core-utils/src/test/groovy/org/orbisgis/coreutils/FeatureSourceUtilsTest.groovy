@@ -59,6 +59,7 @@ class FeatureSourceUtilsTest {
         assert fs
         assert fs in FeatureSource
         assert 1234 == fs.getCount()
+        assert 27572 == fs.srid
     }
 
     @Test

@@ -38,7 +38,12 @@ package org.orbisgis.coreutils
 
 import org.geotools.data.FeatureSource
 import org.geotools.data.Query
+import org.geotools.data.simple.SimpleFeatureSource
+import org.geotools.data.transform.Definition
+import org.geotools.data.transform.TransformFactory
 import org.geotools.feature.FeatureCollection
+import org.geotools.filter.text.cql2.CQL
+import org.geotools.filter.text.ecql.ECQL
 import org.opengis.feature.Feature
 import org.opengis.feature.type.FeatureType
 import org.opengis.filter.Filter
@@ -138,7 +143,7 @@ static int getCount(FeatureSource fs){
  * @return the number of features
  */
 static int getSrid(FeatureSource fs){
-    return fs.getSchema().getCoordinateReferenceSystem().getName().getCode() as int
+    return fs.getSchema().getCoordinateReferenceSystem().getIdentifiers().first().getCode() as int
 }
 
 /**
@@ -148,7 +153,34 @@ static int getSrid(FeatureSource fs){
  * @param fs
  * @param closure
  */
-static void eachFeature(FeatureSource fs, List expressions =null, def filter=null , Closure closure) {
+static void eachFeature(FeatureSource fs, Map expressions =null, def filter=null , Closure closure) {
+    Filter filter_gt
+    if(filter){
+         filter_gt = CQL.toFilter(filter);
+    }
+    if(expressions){
+        List<Definition> definitions = new ArrayList<Definition>();
+        expressions.each {entry ->
+            if(entry.key && entry.value){
+                definitions.add(new Definition(entry.key, ECQL.toExpression(entry.value)))
+            }
+        }
+        if(definitions){
+        SimpleFeatureSource transformed = TransformFactory.transform(fs, fs.getName(), definitions)
+
+        def featureIterator = transformed.getFeatures(filter_gt).getFeatureIterator()
+        try {
+            while(featureIterator.hasNext()) {
+                Feature f = featureIterator.next()
+                closure.call(f)
+            }
+        } finally {
+            featureIterator.close()
+        }
+        }else{
+            return
+        }
+    }
     def featureIterator = fs.getFeatures(Query.ALL).getFeatureIterator()
     try {
         while(featureIterator.hasNext()) {
