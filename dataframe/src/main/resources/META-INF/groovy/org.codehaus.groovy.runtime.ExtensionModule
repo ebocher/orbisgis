@@ -1,0 +1,4 @@
+moduleName=OrbisGIS Groovy geometry extension
+moduleVersion=1.0
+extensionClasses=org.orbisgis.dataframe.DataFrameUtils
+staticExtensionClasses=

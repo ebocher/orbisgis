@@ -2448,3 +2448,26 @@ static Collection<String> getTableNames(JDBCDataStore ds) {
         return new ArrayList<>();
     }
 }
+
+/**
+ * Return the list of the table name corresponding to the given patterns and types.
+ *
+ * @param catalogPattern Pattern of the catalog name.
+ * @param schemaPattern  Pattern of the schema name.
+ * @param namePattern    Pattern of the table name.
+ * @param types          Type of the table.
+ * @return               List of the table corresponding to the given patterns and types.
+ */
+static Collection<String> getTableNames( JDBCDataStore ds, String catalogPattern,  String schemaPattern,
+                                         String namePattern,  String... types){
+    String[] array = null;
+    if(types != null){
+        array = Arrays.stream(types).filter(Objects::nonNull).map(Enum::toString).toArray(String[]::new);
+    }
+    try {
+        return JDBCUtilities.getTableNames(getConnection(ds), catalogPattern, schemaPattern, namePattern, array);
+    } catch (SQLException e) {
+        error("Unable to get the table names.", e);
+    }
+    return new ArrayList<>();
+}

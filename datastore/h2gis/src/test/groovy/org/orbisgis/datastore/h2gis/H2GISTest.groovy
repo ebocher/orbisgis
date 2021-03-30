@@ -1,7 +1,6 @@
 package org.orbisgis.datastore.h2gis
 
 import org.apache.commons.dbcp.BasicDataSource
-import org.geotools.data.Query
 import org.junit.jupiter.api.Test
 import org.locationtech.jts.geom.Geometry
 import org.locationtech.jts.geom.Point
@@ -12,10 +11,6 @@ import java.sql.Time
 import static org.junit.jupiter.api.Assertions.assertEquals
 import static org.junit.jupiter.api.Assertions.assertFalse
 import static org.junit.jupiter.api.Assertions.assertNotNull
-import static org.junit.jupiter.api.Assertions.assertNotNull
-import static org.junit.jupiter.api.Assertions.assertNull
-import static org.junit.jupiter.api.Assertions.assertNull
-import static org.junit.jupiter.api.Assertions.assertTrue
 import static org.junit.jupiter.api.Assertions.assertTrue
 
 /**
@@ -111,9 +106,10 @@ class H2GISTest {
         h2GIS.execute("CREATE TABLE TYPES (colint INT, colreal REAL, colint2 MEDIUMINT, coltime TIME, " +
                 "colvarchar VARCHAR2, colbool boolean, coltiny tinyint, colpoint GEOMETRY(POINT), colgeom GEOMETRY)")
         def fs = h2GIS.getFeatureSource("TYPES")
-        assertTrue(fs.hasColumn("COLINT", Integer.class))
-        assertFalse(fs.hasColumn("COLINT", Short.class))
-        assertTrue(fs.hasColumns(
+        def schema = fs.getSchema()
+        assertTrue(schema.has("COLINT", Integer.class))
+        assertFalse(schema.has("COLINT", Short.class))
+        assertTrue(schema.has(
                 [COLINT    : Integer.class,
                  COLREAL   : Float.class,
                  COLINT2   : Integer.class,
@@ -181,4 +177,36 @@ class H2GISTest {
         assertTrue values.contains("LOADH2GIS.PUBLIC.TABLE1")
         assertTrue values.contains("LOADH2GIS.PUBLIC.TABLE2")
     }
+
+    @Test
+    void exportImportShpFile() {
+        def h2GIS = H2GIS.open('./target/loadH2GIS')
+        h2GIS.execute("""
+                DROP TABLE IF EXISTS h2gis, h2gis_imported;
+                CREATE TABLE h2gis (gid int, the_geom geometry(point));
+                INSERT INTO h2gis VALUES (1, 'POINT(10 10)'::GEOMETRY), (2, 'POINT(1 1)'::GEOMETRY);
+        """)
+        h2GIS.export("h2gis", "target/h2gis_imported.shp");
+        h2GIS.import("target/h2gis_imported.shp", "h2gis_imported", null, false);
+        def concat = ""
+        h2GIS.getFeatureSource("H2GIS_IMPORTED").eachFeature { row -> concat += "$row.GID $row.THE_GEOM\n" }
+        assertEquals("1 POINT (10 10)\n2 POINT (1 1)\n", concat)
+    }
+
+    @Test
+    void exportImportTwoTimesShpFile() {
+        def h2GIS = H2GIS.open('./target/loadH2GIS')
+        h2GIS.execute("""
+                DROP TABLE IF EXISTS h2gis, h2gis_imported;
+                CREATE TABLE h2gis (gid int, the_geom geometry(point));
+                INSERT INTO h2gis VALUES (1, 'POINT(10 10)'::GEOMETRY), (2, 'POINT(1 1)'::GEOMETRY);
+        """)
+        h2GIS.export("h2gis", "target/h2gis_imported.shp", true);
+        h2GIS.import("target/h2gis_imported.shp", "h2gis_imported", false);
+        h2GIS.import("target/h2gis_imported.shp", "h2gis_imported", true);
+        def concat = ""
+        h2GIS.getFeatureSource("h2gis_imported").eachFeature { row -> concat += "$row.GID $row.THE_GEOM\n" }
+        assertEquals("1 POINT (10 10)\n2 POINT (1 1)\n", concat)
+    }
+
 }

@@ -90,7 +90,7 @@ class FeatureSourceUtilsTest {
         def fs = url.toFeatureSource()
         assert fs
         fs.withExpression("gid +12 as new_gid").eachFeature("gid = 1234"){ feature ->
-            println 12246 == feature.new_gid
+            assert  1246 == feature.new_gid
         }
     }
 }

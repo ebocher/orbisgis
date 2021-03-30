@@ -38,12 +38,10 @@ package org.orbisgis.coreutils
 
 import org.geotools.data.FeatureSource
 import org.geotools.data.Query
-import org.geotools.data.simple.SimpleFeatureSource
 import org.geotools.data.transform.Definition
 import org.geotools.data.transform.TransformFactory
 import org.geotools.feature.FeatureCollection
 import org.geotools.filter.text.cql2.CQL
-import org.geotools.filter.text.ecql.ECQL
 import org.opengis.feature.Feature
 import org.opengis.feature.simple.SimpleFeatureType
 import org.opengis.feature.type.FeatureType
@@ -149,11 +147,12 @@ static int getSrid(FeatureSource fs){
 
 
 /**
- * Iterate over all features with options
- * expression and filter
+ * Build a new {@link FeatureSource} from a SELECT like expression
  *
- * @param fs
- * @param closure
+ * e.g ST_Buffer(the_geom, 10) as the_geom, gid / 12 as new_gid
+ *
+ * @param fs input {@link FeatureSource}
+ * @param expression SELECT expression
  */
 static FeatureSource withExpression(FeatureSource fs, String expression) {
     if(expression) {
@@ -164,10 +163,12 @@ static FeatureSource withExpression(FeatureSource fs, String expression) {
     }
     return fs
 }
+
 /**
  * Iterate over all features with a filter
  *
- * @param fs
+ * @param fs input {@link FeatureSource}
+ * @param filter expressed with the ECQL syntax
  * @param closure
  */
 static void eachFeature(FeatureSource fs, String filter = null , Closure closure) {
@@ -192,45 +193,4 @@ static void eachFeature(FeatureSource fs, String filter = null , Closure closure
             featureIterator.close()
         }
     }
-}
-
-/***
- *
- * @param fs
- * @param name
- * @return
- */
-static boolean hasColumn(FeatureSource fs, String name){
-    return fs.getSchema().getDescriptor(name)
-}
-
-/***
- *
- * @param fs
- * @param name
- * @return
- */
-static boolean hasColumn(SimpleFeatureType simpleFeatureType, String name, Class<?> clazz ){
-    def descriptor = simpleFeatureType.getDescriptor(name)
-    return descriptor?clazz.isAssignableFrom(descriptor.type.binding):false
-}
-
-/***
- *
- * @param fs
- * @param name
- * @return
- */
-static boolean hasColumn(FeatureSource fs,String name,Class<?> clazz ){
-    return hasColumn(fs.getSchema(), name, clazz)
-}
-
-/***
- *
- * @param columnMap
- * @return
- */
-static boolean hasColumns(FeatureSource fs, Map<String, Class<?>> columnWithType) {
-    def schema = fs.getSchema()
-    return columnWithType.entrySet().stream().allMatch(entry -> hasColumn(schema,entry.getKey(), entry.getValue()));
 }

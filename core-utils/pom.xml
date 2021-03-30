@@ -23,7 +23,6 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.compiler.source>1.8</maven.compiler.source>
         <buildNumber>${maven.build.timestamp}</buildNumber>
-        <geotools.version>25-SNAPSHOT</geotools.version>
     </properties>
 
     <!-- Dependencies -->
@@ -68,6 +67,12 @@
         <dependency>
             <groupId>org.geotools</groupId>
             <artifactId>gt-shapefile</artifactId>
+            <version>${geotools.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.geotools</groupId>
+            <artifactId>gt-epsg-hsql</artifactId>
             <version>${geotools.version}</version>
             <scope>test</scope>
         </dependency>

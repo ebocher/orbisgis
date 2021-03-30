@@ -1,0 +1,4 @@
+moduleName=OrbisGIS H2GIS extension
+moduleVersion=1.0
+extensionClasses=org.orbisgis.datastore.h2gis.H2GISDataStoreUtils
+staticExtensionClasses=

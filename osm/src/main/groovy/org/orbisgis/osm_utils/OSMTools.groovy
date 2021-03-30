@@ -1,5 +1,5 @@
 /*
- * Bundle core/utils is part of the OrbisGIS platform
+ * Bundle OSM is part of the OrbisGIS platform
  *
  * OrbisGIS is a java GIS application dedicated to research in GIScience.
  * OrbisGIS is developed by the GIS group of the DECIDE team of the
@@ -15,7 +15,7 @@
  *
  * OSM is distributed under LGPL 3 license.
  *
- * Copyright (C) 2020 CNRS (Lab-STICC UMR CNRS 6285)
+ * Copyright (C) 2019 CNRS (Lab-STICC UMR CNRS 6285)
  *
  *
  * OSM is free software: you can redistribute it and/or modify it under the
@@ -34,22 +34,20 @@
  * or contact directly:
  * info_at_ orbisgis.org
  */
-package org.orbisgis.coreutils
+package org.orbisgis.osm_utils
 
-import org.opengis.feature.simple.SimpleFeature
-
-/**
- * Utility script used as extension module adding methods to {@link SimpleFeature} class.
- *
- * @author Erwan Bocher (CNRS 2021)
- */
+import groovy.transform.Field
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
- * Method called when the asked property is missing and returns the SimpleFeature corresponding to the given name.
+ * Main access point to the project methods.
  *
- * @param feature SimpleFeature to use.
- * @param name Name of the property/SimpleFeatureSource to get.
+ * @author Erwan Bocher (CNRS LAB-STICC)
+ * @author Elisabeth Lesaux (UBS LAB-STICC)
+ * @author Sylvain PALOMINOS (UBS Chaire GEOTERA 2020)
  */
-static Object propertyMissing(SimpleFeature feature, String name) {
-    return feature.getAttribute(name)
-}
+
+@Field static final Extract Extract = new Extract()
+@Field static final Transform Transform = new Transform()
+

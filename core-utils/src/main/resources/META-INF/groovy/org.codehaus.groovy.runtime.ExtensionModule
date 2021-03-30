@@ -3,6 +3,7 @@ moduleVersion=1.0
 extensionClasses=org.orbisgis.coreutils.DataStoreUtils, \
   org.orbisgis.coreutils.FeatureIteratorUtils, \
   org.orbisgis.coreutils.FeatureCollectionUtils, \
+  org.orbisgis.coreutils.SimpleFeatureTypeUtils, \
   org.orbisgis.coreutils.FeatureUtils, \
   org.orbisgis.coreutils.FeatureSourceUtils
 staticExtensionClasses=org.orbisgis.coreutils.DataStoreFinderUtils
