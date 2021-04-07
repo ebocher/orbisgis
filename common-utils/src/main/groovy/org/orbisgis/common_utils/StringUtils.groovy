@@ -47,6 +47,7 @@ import static java.nio.charset.StandardCharsets.UTF_8
  * @author Sylvain PALOMINOS (UBS chaire GEOTARE 2020)
  */
 
+
 /**
  * Prefix the given string with an {@link UUID}.
  *
