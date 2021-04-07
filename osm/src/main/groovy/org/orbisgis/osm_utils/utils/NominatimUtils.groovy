@@ -178,10 +178,16 @@ static Geometry getArea(String placeName) {
  * @return A JTS polygon.
  */
 static Geometry geometryFromNominatim(Collection<Float> bbox) {
-    def env = bbox as Envelope
-    if (env) {
-        def poly = env as Polygon
-        poly.SRID = 4326
-        return poly.valid ? poly : null
+    if (!bbox) {
+        error "The latitude and longitude values cannot be null or empty"
+        return null
     }
+    if (!(bbox instanceof Collection) && !bbox.class.isArray()) {
+        error "The latitude and longitude values must be set as an array"
+        return null
+    }
+    if (bbox.size == 4) {
+        return OverpassUtils.buildGeometry([bbox[1], bbox[0], bbox[3], bbox[2]]);
+    }
+    error("The bbox must be defined with 4 values")
 }

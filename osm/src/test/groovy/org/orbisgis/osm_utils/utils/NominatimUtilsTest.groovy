@@ -48,6 +48,6 @@ class NominatimUtilsTest {
     @Test
     void geometryFromNominatimTest(){
         def coords = [10, 11, 12, 13]
-        assert ((coords as Envelope)as Polygon).toString() == NominatimUtils.geometryFromNominatim(coords).toString()
+        assert "POLYGON ((11 10, 11 12, 13 12, 13 10, 11 10))" == NominatimUtils.geometryFromNominatim(coords).toString()
     }
 }

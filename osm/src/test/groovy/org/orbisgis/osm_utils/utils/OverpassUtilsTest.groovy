@@ -115,7 +115,11 @@ out;"""
 );
 (._;>;);
 out;"""
-        def geom = [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [0.0, 0.0]] as Polygon
+        Coordinate[] coordinates = [new Coordinate(0.0, 0.0),
+                                    new Coordinate(0.0, 1.0),
+                                    new Coordinate(1.0, 1.0),
+                                    new Coordinate(0.0, 0.0)]
+        def geom = FACTORY.createPolygon(coordinates)
         def keys = ["building"]
         def elements = [OSMElement.NODE, OSMElement.WAY]
         assert queryAllData == OverpassUtils.buildOSMQuery(geom, keys, elements)

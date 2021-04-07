@@ -39,6 +39,7 @@ package org.orbisgis.osm_utils.utils
 import org.h2gis.functions.factory.H2GISDBFactory
 import org.h2gis.utilities.JDBCUtilities
 import org.h2gis.utilities.TableLocation
+import org.h2gis.utilities.dbtypes.DBTypes
 import org.junit.jupiter.api.*
 import org.locationtech.jts.geom.LineString
 import org.locationtech.jts.geom.MultiLineString
@@ -105,13 +106,12 @@ class TransformUtilsTest {
         """
 
         TransformUtils.buildIndexes(connection, osmTablesPrefix)
-        def b = isH2DataBase(connection)
-        def loc = TableLocation.parse("${osmTablesPrefix}_node", b)
+        def loc = TableLocation.parse("${osmTablesPrefix}_node", DBTypes.H2)
         assert JDBCUtilities.tableExists(connection, loc)
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_NODE")
+        assert JDBCUtilities.getColumnNames(connection, loc.toString()).contains("ID_NODE")
         assert JDBCUtilities.isIndexed(connection, loc, "ID_NODE")
 
-        loc = TableLocation.parse("${osmTablesPrefix}_way_node", b)
+        loc = TableLocation.parse("${osmTablesPrefix}_way_node",DBTypes.H2)
         assert JDBCUtilities.tableExists(connection, loc)
         assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_NODE")
         assert JDBCUtilities.isIndexed(connection, loc, "ID_NODE")
@@ -120,14 +120,14 @@ class TransformUtilsTest {
         assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_WAY")
         assert JDBCUtilities.isIndexed(connection, loc, "ID_WAY")
 
-        loc = TableLocation.parse("${osmTablesPrefix}_way", b)
+        loc = TableLocation.parse("${osmTablesPrefix}_way", DBTypes.H2)
         assert JDBCUtilities.tableExists(connection, loc)
         assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_WAY")
         assert JDBCUtilities.isIndexed(connection, loc, "ID_WAY")
         assert JDBCUtilities.getColumnNames(connection, loc).contains("NOT_TAKEN_INTO_ACCOUNT")
         assert !JDBCUtilities.isIndexed(connection, loc, "NOT_TAKEN_INTO_ACCOUNT")
 
-        loc = TableLocation.parse("${osmTablesPrefix}_way_tag", b)
+        loc = TableLocation.parse("${osmTablesPrefix}_way_tag", DBTypes.H2)
         assert JDBCUtilities.tableExists(connection, loc)
         assert JDBCUtilities.getColumnNames(connection, loc).contains("TAG_KEY")
         assert JDBCUtilities.isIndexed(connection, loc, "TAG_KEY")
@@ -136,7 +136,7 @@ class TransformUtilsTest {
         assert JDBCUtilities.getColumnNames(connection, loc).contains("TAG_VALUE")
         assert JDBCUtilities.isIndexed(connection, loc, "TAG_VALUE")
 
-        loc = TableLocation.parse("${osmTablesPrefix}_relation_tag", b)
+        loc = TableLocation.parse("${osmTablesPrefix}_relation_tag", DBTypes.H2)
         assert JDBCUtilities.tableExists(connection, loc)
         assert JDBCUtilities.getColumnNames(connection, loc).contains("TAG_KEY")
         assert JDBCUtilities.isIndexed(connection, loc, "TAG_KEY")
@@ -145,22 +145,22 @@ class TransformUtilsTest {
         assert JDBCUtilities.getColumnNames(connection, loc).contains("TAG_VALUE")
         assert JDBCUtilities.isIndexed(connection, loc, "TAG_VALUE")
 
-        loc = TableLocation.parse("${osmTablesPrefix}_relation", b)
+        loc = TableLocation.parse("${osmTablesPrefix}_relation", DBTypes.H2)
         assert JDBCUtilities.tableExists(connection, loc)
         assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_RELATION")
         assert JDBCUtilities.isIndexed(connection, loc, "ID_RELATION")
 
-        loc = TableLocation.parse("${osmTablesPrefix}_way_member", b)
+        loc = TableLocation.parse("${osmTablesPrefix}_way_member", DBTypes.H2)
         assert JDBCUtilities.tableExists(connection, loc)
         assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_RELATION")
         assert JDBCUtilities.isIndexed(connection, loc, "ID_RELATION")
 
-        loc = TableLocation.parse("${osmTablesPrefix}_way_not_taken_into_account", b)
+        loc = TableLocation.parse("${osmTablesPrefix}_way_not_taken_into_account", DBTypes.H2)
         assert JDBCUtilities.tableExists(connection, loc)
         assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_WAY")
         assert !JDBCUtilities.isIndexed(connection, loc, "ID_WAY")
 
-        loc = TableLocation.parse("${osmTablesPrefix}_relation_not_taken_into_account", b)
+        loc = TableLocation.parse("${osmTablesPrefix}_relation_not_taken_into_account", DBTypes.H2)
         assert JDBCUtilities.tableExists(connection, loc)
         assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_RELATION")
         assert !JDBCUtilities.isIndexed(connection, loc, "ID_RELATION")
@@ -206,9 +206,9 @@ class TransformUtilsTest {
         //Test line
         def result = TransformUtils.toPolygonOrLine(lineType, connection, prefix, epsgCode, tags, columnsToKeep)
         assert result
-        def loc = TableLocation.parse(result, isH2DataBase(connection))
+        def loc = TableLocation.parse(result, DBTypes.H2)
         assert 2 == JDBCUtilities.getRowCount(connection, loc)
-        def rows = connection.rows("SELECT * FROM ${loc.toString(isH2DataBase(connection))}")
+        def rows = connection.rows("SELECT * FROM ${loc.toString()}")
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 0:
@@ -229,9 +229,9 @@ class TransformUtilsTest {
         //Test polygon
         result = TransformUtils.toPolygonOrLine(polygonType, connection, prefix, epsgCode, tags, columnsToKeep)
         assert result
-        loc = TableLocation.parse(result, isH2DataBase(connection))
+        loc = TableLocation.parse(result, DBTypes.H2)
         assert 2 == JDBCUtilities.getRowCount(connection, loc)
-        rows = connection.rows("SELECT * FROM ${loc.toString(isH2DataBase(connection))}")
+        rows = connection.rows("SELECT * FROM ${loc.toString()}")
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 1:
@@ -254,9 +254,9 @@ class TransformUtilsTest {
         connection.execute "CREATE TABLE ${prefix}_way_tag (id_way int, tag_key varchar, tag_value varchar)"
         result = TransformUtils.toPolygonOrLine(polygonType, connection, prefix, epsgCode, tags, columnsToKeep)
         assert result
-        loc = TableLocation.parse(result, isH2DataBase(connection))
+        loc = TableLocation.parse(result, DBTypes.H2)
         assert 1 == JDBCUtilities.getRowCount(connection, loc)
-        rows = connection.rows("SELECT * FROM ${loc.toString(isH2DataBase(connection))}")
+        rows = connection.rows("SELECT * FROM ${loc.toString()}")
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 1:
@@ -269,9 +269,9 @@ class TransformUtilsTest {
         }
         result = TransformUtils.toPolygonOrLine(lineType, connection, prefix, epsgCode, tags, columnsToKeep)
         assert result
-        loc = TableLocation.parse(result, isH2DataBase(connection))
+        loc = TableLocation.parse(result, DBTypes.H2)
         assert 1 == JDBCUtilities.getRowCount(connection, loc)
-        rows = connection.rows("SELECT * FROM ${loc.toString(isH2DataBase(connection))}")
+        rows = connection.rows("SELECT * FROM ${loc.toString()}")
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 1:
@@ -293,9 +293,9 @@ class TransformUtilsTest {
         connection.execute "CREATE TABLE ${prefix}_relation_tag (id_relation int, tag_key varchar, tag_value varchar)"
         result = TransformUtils.toPolygonOrLine(polygonType, connection, prefix, epsgCode, tags, columnsToKeep)
         assert result
-        loc = TableLocation.parse(result, isH2DataBase(connection))
+        loc = TableLocation.parse(result, DBTypes.H2)
         assert 1 == JDBCUtilities.getRowCount(connection, loc)
-        rows = connection.rows("SELECT * FROM ${loc.toString(isH2DataBase(connection))}")
+        rows = connection.rows("SELECT * FROM ${loc.toString()}")
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 1:
@@ -308,9 +308,9 @@ class TransformUtilsTest {
         }
         result = TransformUtils.toPolygonOrLine(lineType, connection, prefix, epsgCode, tags, columnsToKeep)
         assert result
-        loc = TableLocation.parse(result, isH2DataBase(connection))
+        loc = TableLocation.parse(result, DBTypes.H2)
         assert 1 == JDBCUtilities.getRowCount(connection, loc)
-        rows = connection.rows("SELECT * FROM ${loc.toString(isH2DataBase(connection))}")
+        rows = connection.rows("SELECT * FROM ${loc.toString()}")
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 1:
@@ -333,7 +333,9 @@ class TransformUtilsTest {
 
         result = TransformUtils.toPolygonOrLine(lineType, connection, prefix, epsgCode, tags, columnsToKeep)
         assert result
-    }/**
+    }
+
+    /**
      * Create a sample of OSM data
      *
      * @param connection Connection where the data should be created.

@@ -40,6 +40,7 @@ import org.h2gis.api.EmptyProgressVisitor
 import org.h2gis.functions.io.osm.OSMDriverFunction
 import org.h2gis.utilities.JDBCUtilities
 import org.h2gis.utilities.TableLocation
+import org.h2gis.utilities.dbtypes.DBUtils
 
 import java.sql.Connection
 
@@ -82,8 +83,8 @@ static boolean load(Connection connection, String tablesPrefix, def filePath) {
     }
 
     info "Load the data file in the database."
-    def tableRef = TableLocation.parse(tablesPrefix, isH2DataBase(connection)).toString(isH2DataBase(connection))
-    new OSMDriverFunction().importFile(connection, tableRef, osmFile, true, new EmptyProgressVisitor())
+
+    new OSMDriverFunction().importFile(connection, tablesPrefix, osmFile, true, new EmptyProgressVisitor())
     info "The input data file has been loaded in the database."
 
     return true

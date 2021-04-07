@@ -37,9 +37,12 @@
 package org.orbisgis.osm_utils.utils
 
 import groovy.transform.Field
+import org.cts.util.UTMUtils
 import org.locationtech.jts.geom.Envelope
 import org.locationtech.jts.geom.Geometry
+import org.locationtech.jts.geom.GeometryFactory
 import org.locationtech.jts.geom.Polygon
+import org.orbisgis.osm_utils.OSMTools
 import org.orbisgis.osm_utils.overpass.OverpassStatus
 
 import static java.net.Proxy.NO_PROXY
@@ -253,9 +256,49 @@ static Geometry geometryFromOverpass(Collection<Collection> bbox) {
         return
     }
     if (bbox.size() == 4) {
-        return [bbox[1], bbox[0], bbox[3], bbox[2]] as Polygon
+        return buildGeometry([bbox[1], bbox[0], bbox[3], bbox[2]]);
     }
     error("The bbox must be defined with 4 values")
+}
+
+
+/**
+ * This method is used to build a new geometry from the following input parameters :
+ * min Longitude , min Latitude , max Longitude , max Latitude
+ *
+ * @author Erwan Bocher (CNRS LAB-STICC)
+ *
+ * @param bbox 4 values
+ * @return a JTS polygon
+ *
+ */
+static Geometry buildGeometry(def bbox) {
+    if (!bbox) {
+        error "The BBox should not be null"
+        return null
+    }
+    if (!bbox.class.isArray() && !(bbox instanceof Collection)) {
+        error "The BBox should be an array"
+        return null
+    }
+    if (bbox.size != 4) {
+        error "The BBox should be an array of 4 values"
+        return null
+    }
+    def minLong = bbox[0]
+    def minLat = bbox[1]
+    def maxLong = bbox[2]
+    def maxLat = bbox[3]
+    //Check values
+    if (UTMUtils.isValidLatitude(minLat) && UTMUtils.isValidLatitude(maxLat)
+            && UTMUtils.isValidLongitude(minLong) && UTMUtils.isValidLongitude(maxLong)) {
+        GeometryFactory geometryFactory = new GeometryFactory()
+        Geometry geom = geometryFactory.toGeometry(new Envelope(minLong, maxLong, minLat, maxLat))
+        geom.setSRID(4326)
+        return geom.isValid() ? geom : null
+
+    }
+    error("Invalid latitude longitude values")
 }
 
 /**
@@ -278,7 +321,7 @@ static String buildOSMQuery(def geomOrEnvelope, def keys, def osmElement, def ge
     }
     def geom = geomOrEnvelope
     if(geom instanceof Envelope) {
-        geom = geom as Polygon
+        geom = new GeometryFactory().toGeometry(geom)
     }
     if (geom.isEmpty()) {
         error "Cannot create the overpass query from an empty polygon."

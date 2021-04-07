@@ -37,8 +37,6 @@
 package org.orbisgis.osm_utils
 
 import groovy.transform.Field
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 
 /**
  * Main access point to the project methods.
