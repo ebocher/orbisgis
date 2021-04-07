@@ -1,0 +1,4 @@
+moduleName=OrbisGIS Groovy sql extension for spatial database
+moduleVersion=1.0
+extensionClasses=org.orbisgis.gisql.GISQL
+staticExtensionClasses=

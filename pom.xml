@@ -20,6 +20,7 @@
                 <module>core-utils</module>
                 <module>datastore</module>
                 <module>dataframe</module>
+                <module>gisql</module>
         </modules>
 
         <!-- Properties -->
@@ -30,12 +31,6 @@
                 <site.basedir>${project.basedir}</site.basedir>
                 <geotools.version>25-SNAPSHOT</geotools.version>
         </properties>
-
-        <!-- Dependencies -->
-        <dependencyManagement>
-                <dependencies>
-                </dependencies>
-        </dependencyManagement>
 
         <!-- Build Settings -->
         <build>
