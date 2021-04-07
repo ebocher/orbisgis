@@ -131,10 +131,17 @@ public class SQLToExpression extends ExpressionDeParser {
                 ((PlainSelect)select.getSelectBody()).getSelectItems().forEach(selectItem -> {
                     if(selectItem instanceof SelectExpressionItem){
                        SelectExpressionItem selectExpressionItem = (SelectExpressionItem) selectItem;
-                        String alias = selectExpressionItem.getAlias().getName();
-                        Expression exp =  sqlToExpression.parseSingleExpression(selectExpressionItem.getExpression().toString());
-                        definitions.add(new Definition(alias.isEmpty()?alias_tmp+identifier:alias, exp));
-                        identifier.getAndIncrement();
+                       String alias = selectExpressionItem.getAlias().getName();
+                       if(alias.isEmpty()){
+                           Expression exp =  sqlToExpression.parseSingleExpression(selectExpressionItem.getExpression().toString());
+                           definitions.add(new Definition(alias_tmp+identifier, exp));
+                           identifier.getAndIncrement();
+                       }
+                       else{
+                           Expression exp =  sqlToExpression.parseSingleExpression(selectExpressionItem.getExpression().toString(), true);
+                           definitions.add(new Definition(alias, exp));
+                       }
+
                     }
                 });
                 return definitions;
@@ -148,12 +155,13 @@ public class SQLToExpression extends ExpressionDeParser {
     /**
      * Convert select SQL  expression to Geotools Expression object
      * @param selectExpression
+     * @param allowPartialParse
      * @return
      */
-    public Expression parseSingleExpression(String selectExpression)  {
+    public Expression parseSingleExpression(String selectExpression, boolean allowPartialParse ) {
         try {
             if (selectExpression != null && !selectExpression.isEmpty()) {
-                net.sf.jsqlparser.expression.Expression parseExpression = CCJSqlParserUtil.parseExpression(selectExpression, true);
+                net.sf.jsqlparser.expression.Expression parseExpression = CCJSqlParserUtil.parseExpression(selectExpression, allowPartialParse);
                 StringBuilder b = new StringBuilder();
                 setBuffer(b);
                 parseExpression.accept(this);
@@ -166,6 +174,15 @@ public class SQLToExpression extends ExpressionDeParser {
             return null;
         }
         return null;
+    }
+
+    /**
+     * Convert select SQL  expression to Geotools Expression object
+     * @param selectExpression
+     * @return
+     */
+    public Expression parseSingleExpression(String selectExpression)  {
+        return parseSingleExpression(selectExpression, false);
     }
 
     @Override

@@ -51,9 +51,9 @@ public class SQLToExpressionTest {
     public void convertToExpressionWithAlias()  {
         SQLToExpression sqlToExpression = new SQLToExpression();
         String expression = "the_geom as geom";
-        assertEquals("the_geom", sqlToExpression.parseSingleExpression(expression).toString());
+        assertEquals("the_geom", sqlToExpression.parseSingleExpression(expression, true).toString());
         expression = "AREA(the_geom) as geom";
-        assertEquals("Area([the_geom])", sqlToExpression.parseSingleExpression(expression).toString());
+        assertEquals("Area([the_geom])", sqlToExpression.parseSingleExpression(expression, true).toString());
     }
 
 }
