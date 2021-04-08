@@ -14,7 +14,7 @@
     <version>0.0.1-SNAPSHOT</version>
 
     <!-- Project Information -->
-    <name>Geotools H2GIS data store utilities</name>
+    <name>Geotools H2GIS datastore</name>
 
     <!-- Properties -->
     <properties>
