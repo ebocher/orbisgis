@@ -86,6 +86,10 @@
             <artifactId>jsqlparser</artifactId>
             <version>4.0</version>
         </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+        </dependency>
     </dependencies>
 
     <!-- Build Settings -->

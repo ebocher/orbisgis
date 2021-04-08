@@ -36,6 +36,7 @@
  */
 package org.orbisgis.common_utils
 
+
 import java.sql.ResultSet
 
 /**
@@ -46,5 +47,5 @@ import java.sql.ResultSet
  */
 
 static def propertyMissing(ResultSet rs, String name) {
-    rs.getObject(name)
+       return rs.getObject(name)
 }

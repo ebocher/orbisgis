@@ -1,6 +1,5 @@
 moduleName=OrbisGIS Groovy commons extension
 moduleVersion=1.0
-extensionClasses=org.orbisgis.common_utils.StringUtils, \
-  org.orbisgis.common_utils.ConnectionUtils, \
-  org.orbisgis.common_utils.ResultSetUtils
+extensionClasses=org.orbisgis.common_utils.ResultSetUtils,\
+  org.orbisgis.common_utils.StringUtils
 staticExtensionClasses=org.orbisgis.common_utils.ScriptUtilities

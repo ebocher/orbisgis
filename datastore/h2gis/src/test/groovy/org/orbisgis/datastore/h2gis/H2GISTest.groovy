@@ -186,8 +186,8 @@ class H2GISTest {
                 CREATE TABLE h2gis (gid int, the_geom geometry(point));
                 INSERT INTO h2gis VALUES (1, 'POINT(10 10)'::GEOMETRY), (2, 'POINT(1 1)'::GEOMETRY);
         """)
-        h2GIS.export("h2gis", "target/h2gis_imported.shp");
-        h2GIS.import("target/h2gis_imported.shp", "h2gis_imported", null, false);
+        h2GIS.export("H2GIS", "target/h2gis_imported.shp", true);
+        h2GIS.import("target/h2gis_imported.shp", "H2GIS_IMPORTED", null, true);
         def concat = ""
         h2GIS.getFeatureSource("H2GIS_IMPORTED").eachFeature { row -> concat += "$row.GID $row.THE_GEOM\n" }
         assertEquals("1 POINT (10 10)\n2 POINT (1 1)\n", concat)
@@ -202,10 +202,10 @@ class H2GISTest {
                 INSERT INTO h2gis VALUES (1, 'POINT(10 10)'::GEOMETRY), (2, 'POINT(1 1)'::GEOMETRY);
         """)
         h2GIS.export("h2gis", "target/h2gis_imported.shp", true);
-        h2GIS.import("target/h2gis_imported.shp", "h2gis_imported", false);
-        h2GIS.import("target/h2gis_imported.shp", "h2gis_imported", true);
+        h2GIS.import("target/h2gis_imported.shp", "H2GIS_IMPORTED", false);
+        h2GIS.import("target/h2gis_imported.shp", "H2GIS_IMPORTED", true);
         def concat = ""
-        h2GIS.getFeatureSource("h2gis_imported").eachFeature { row -> concat += "$row.GID $row.THE_GEOM\n" }
+        h2GIS.getFeatureSource("H2GIS_IMPORTED").eachFeature { row -> concat += "$row.GID $row.THE_GEOM\n" }
         assertEquals("1 POINT (10 10)\n2 POINT (1 1)\n", concat)
     }
 

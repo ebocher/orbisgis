@@ -67,6 +67,25 @@ static String[] "import"(JDBCDataStore ds, String filePath, String tableName,
     }
 }
 
+/**
+ * Import a file to a database
+ *
+ * @param connection DataStore containing the table.
+ * @param filePath   Path of the destination file.
+ * @param tableName  Name of the table to save.
+ * @param encoding   Encoding of the file. Set to null by default.
+ * @param deleteFile True to delete the file if exists. Set to true by default.
+ * @throws java.sql.SQLException Exception throw on database error.
+ */
+static String[] "import"(JDBCDataStore ds, String filePath, String tableName,
+                         boolean deleteFile)
+        throws SQLException {
+    def type = ds.properties.dataStoreFactory.DBTYPE.sample
+    if(type == "h2gis" || type == "h2" || type == "postgresql" || type == "postgis") {
+        return iOMethods.importFile(ds.connection, filePath, tableName, null, deleteFile)
+    }
+}
+
 
 /**
  * Link a table from another database to an H2GIS database.

@@ -41,6 +41,7 @@ import org.geotools.data.DataStoreFinder
 import org.geotools.jdbc.JDBCDataStore
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import static org.orbisgis.datastore.jdbcutils.JDBCDataStoreUtils.out
 
 /**
  * Test class dedicated to {@link org.orbisgis.datastore.jdbcutils.JDBCDataStoreUtils}.
@@ -58,7 +59,7 @@ class JDBCDataStoreUtilsTest {
         def dataStore = DataStoreFinder.getDataStore([dbtype: "h2gis", database: "./target/database_${UUID.randomUUID()}"])
         assert dataStore in JDBCDataStore
         h2gis = (JDBCDataStore) dataStore
-        h2gis.connection.execute("""
+        h2gis.execute("""
             CREATE TABLE elements (
                 id int,
                 name varchar(255),

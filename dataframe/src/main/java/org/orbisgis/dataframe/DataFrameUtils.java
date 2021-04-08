@@ -21,6 +21,11 @@ import java.util.Map;
 public class DataFrameUtils {
 
 
+    /**
+     * Convert a SimpleFeatureSource to a Smile dataframe
+     * @param fs
+     * @return
+     */
     public static DataFrame toDataFrame(SimpleFeatureSource fs){
         DataFrame df=null;
         SimpleFeatureType schema = fs.getSchema();

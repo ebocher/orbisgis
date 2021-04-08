@@ -5,6 +5,7 @@ import org.h2gis.functions.factory.H2GISDBFactory
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 
+import javax.sql.DataSource
 import java.sql.Connection
 
 /**
@@ -14,50 +15,29 @@ import java.sql.Connection
  */
 class GisqlTest {
 
-
-    static Connection h2gis
+    static Gisql h2gis
 
     @BeforeAll
     static void beforeAll() {
-        h2gis = H2GISDBFactory.createSpatialDataBase("./target/gisql_db")
+        h2gis = new Gisql(H2GISDBFactory.createSpatialDataBase("./target/gisql_db"))
+        h2gis.execute("""
+            CREATE TABLE elements (
+                id int,
+                name varchar(255),
+                number int,
+                the_geom GEOMETRY(POINT, 4326)
+            );
+            INSERT INTO elements VALUES (1, 'Simple Name', 2846, ST_GEOMFROMTEXT('POINT(0 0)', 4326));
+            INSERT INTO elements VALUES (2, 'Maybe a complex Name', 7455, ST_GEOMFROMTEXT('POINT(0 10)', 4326));
+            INSERT INTO elements VALUES (3, 'S N', 9272, ST_GEOMFROMTEXT('POINT(10 0)', 4326));
+        """)
     }
 
     @Test
-    void queryTest() {
-        def str = "";
-        h2gis.query("SELECT * FROM elements WHERE id > 1")
-                {while(it.next()) {
-                    str+=it.name+" "+it.number+" "
-                }}
-        assert "Maybe a complex Name 7455 S N 9272 " == str
-
-        str = "";
-        h2gis.query("SELECT * FROM elements WHERE id > ?", [1])
-                { while(it.next()) {
-                    str+=it.name+" "+it.number+" "
-                }}
-        assert "Maybe a complex Name 7455 S N 9272 " == str
-
-        str = "";
-        h2gis.query("SELECT * FROM elements WHERE id > :id", [id:1])
-                { while(it.next()) {
-                    str+=it.name+" "+it.number+" "
-                }}
-        assert "Maybe a complex Name 7455 S N 9272 " == str
-
-        str = "";
-        h2gis.query([id:1], "SELECT * FROM elements WHERE id > :id")
-                { while(it.next()) {
-                    str+=it.name+" "+it.number+" "
-                }}
-        assert "Maybe a complex Name 7455 S N 9272 " == str
-
-        str = "";
-        def id = 1
-        h2gis.query("SELECT * FROM elements WHERE id > $id")
-                { while(it.next()) {
-                    str+=it.name+" "+it.number+" "
-                }}
-        assert "Maybe a complex Name 7455 S N 9272 " == str
+    void getSrid(){
+        assert h2gis.getSRID("elements")==4326
+        assert h2gis.getSRID("elements", "THE_GEOM")==4326
+        assert h2gis.getSRID("elements", "the_geom")==4326
     }
+
 }

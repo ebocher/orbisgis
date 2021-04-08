@@ -51,6 +51,8 @@ import java.sql.*
  * @author Sylvain PALOMINOS (UBS chaire GEOTERA 2020)
  */
 
+public static final @Field OutParameters out = new OutParameters()
+
 private static final @Field Map<JDBCDataStore, Sql> SQLS = new HashMap<>()
 
 private static Sql getSql(JDBCDataStore ds) {
@@ -101,8 +103,7 @@ DataSet dataSet(JDBCDataStore ds, Class<?> type) {
  * @param closure Called for each row with a {@link java.sql.ResultSet}.
  * @throws SQLException Thrown on a database manipulation error occurrence.
  */
-static void query(JDBCDataStore ds, String sql,
-           @ClosureParams(value = SimpleType, options = ["java.sql.ResultSet"]) Closure closure)
+static void query(JDBCDataStore ds, String sql,Closure closure)
         throws SQLException {
     getSql(ds).query(sql, closure)
 }
@@ -130,8 +131,7 @@ static void query(JDBCDataStore ds, String sql,
  * @param closure Called for each row with a {@link java.sql.ResultSet}.
  * @throws SQLException Thrown on a database manipulation error occurrence.
  */
-static void query(JDBCDataStore ds, String sql, List<Object> params,
-                  @ClosureParams(value = SimpleType.class,options = ["java.sql.ResultSet"]) Closure closure)
+static void query(JDBCDataStore ds, String sql, List<Object> params, Closure closure)
         throws SQLException {
     getSql(ds).query(sql, params, closure)
 }
@@ -147,8 +147,7 @@ static void query(JDBCDataStore ds, String sql, List<Object> params,
  * @param closure Called for each row with a {@link java.sql.ResultSet}.
  * @throws SQLException Thrown on a database manipulation error occurrence.
  */
-static void query(JDBCDataStore ds, String sql, Map map,
-           @ClosureParams(value = SimpleType.class,options = ["java.sql.ResultSet"]) Closure closure)
+static void query(JDBCDataStore ds, String sql, Map map, Closure closure)
         throws SQLException {
     getSql(ds).query(sql, map, closure)
 }
@@ -163,8 +162,7 @@ static void query(JDBCDataStore ds, String sql, Map map,
  * @param closure Called for each row with a {@link java.sql.ResultSet}.
  * @throws SQLException Thrown on a database manipulation error occurrence.
  */
-static void query(JDBCDataStore ds, Map map, String sql,
-           @ClosureParams(value = SimpleType.class,options = ["java.sql.ResultSet"]) Closure closure)
+static void query(JDBCDataStore ds, Map map, String sql, Closure closure)
         throws SQLException {
     getSql(ds).query(map, sql, closure)
 }

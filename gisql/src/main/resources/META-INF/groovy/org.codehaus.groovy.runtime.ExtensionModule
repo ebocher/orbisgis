@@ -1,4 +1,0 @@
-moduleName=OrbisGIS Groovy geometry extension
-moduleVersion=1.0
-extensionClasses=orbisgis.Gisql
-staticExtensionClasses=
