@@ -36,62 +36,60 @@
  */
 package org.orbisgis.osm_utils.utils
 
+import groovy.sql.Sql
 import org.h2gis.functions.factory.H2GISDBFactory
-import org.h2gis.utilities.JDBCUtilities
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
-
-import java.sql.Connection
 
 import static org.h2gis.utilities.JDBCUtilities.*
 
 class DataUtilsTest {
-    private static Connection CONNECTION
+    private static Sql SQL
     private static String DB_NAME
 
     @BeforeAll
     static void beforeAll() {
         DB_NAME = (this.simpleName.postfix()).toUpperCase()
-        CONNECTION = H2GISDBFactory.createSpatialDataBase("./target/" + DB_NAME)
+        SQL = new Sql(H2GISDBFactory.createSpatialDataBase("./target/" + DB_NAME))
     }
 
     @Test
     void loadTest() {
         def prefix = "A".postfix().toUpperCase()
         def filePath = new File(this.class.getResource("sample.osm").toURI()).absolutePath
-        assert DataUtils.load(CONNECTION, prefix, filePath)
-        def tables = getTableNames(CONNECTION, null, null, null, null)
+        assert DataUtils.load(SQL, prefix, filePath)
+        def tables = getTableNames(SQL.connection, null, null, null, null)
         def tablePrefix = DB_NAME + ".PUBLIC." + prefix
 
         assert tables.contains(tablePrefix + "_NODE")
-        assert 5 == getRowCount(CONNECTION, prefix + "_NODE")
+        assert 5 == getRowCount(SQL.connection, prefix + "_NODE")
 
         assert tables.contains(tablePrefix + "_NODE_TAG")
-        assert 2 == getRowCount(CONNECTION, prefix + "_NODE_TAG")
+        assert 2 == getRowCount(SQL.connection, prefix + "_NODE_TAG")
 
         assert tables.contains(tablePrefix + "_WAY")
-        assert 1 == getRowCount(CONNECTION, prefix + "_WAY")
+        assert 1 == getRowCount(SQL.connection, prefix + "_WAY")
 
         assert tables.contains(tablePrefix + "_WAY_TAG")
-        assert 1 == getRowCount(CONNECTION, prefix + "_WAY_TAG")
+        assert 1 == getRowCount(SQL.connection, prefix + "_WAY_TAG")
 
         assert tables.contains(tablePrefix + "_WAY_NODE")
-        assert 3 == getRowCount(CONNECTION, prefix + "_WAY_NODE")
+        assert 3 == getRowCount(SQL.connection, prefix + "_WAY_NODE")
 
         assert tables.contains(tablePrefix + "_RELATION")
-        assert 1 == getRowCount(CONNECTION, prefix + "_RELATION")
+        assert 1 == getRowCount(SQL.connection, prefix + "_RELATION")
 
         assert tables.contains(tablePrefix + "_RELATION_TAG")
-        assert 2 == getRowCount(CONNECTION, prefix + "_RELATION_TAG")
+        assert 2 == getRowCount(SQL.connection, prefix + "_RELATION_TAG")
 
         assert tables.contains(tablePrefix + "_NODE_MEMBER")
-        assert 2 == getRowCount(CONNECTION, prefix + "_NODE_MEMBER")
+        assert 2 == getRowCount(SQL.connection, prefix + "_NODE_MEMBER")
 
         assert tables.contains(tablePrefix + "_WAY_MEMBER")
-        assert 1 == getRowCount(CONNECTION, prefix + "_WAY_MEMBER")
+        assert 1 == getRowCount(SQL.connection, prefix + "_WAY_MEMBER")
 
         assert tables.contains(tablePrefix + "_RELATION_MEMBER")
-        assert 0 == getRowCount(CONNECTION, prefix + "_RELATION_MEMBER")
+        assert 0 == getRowCount(SQL.connection, prefix + "_RELATION_MEMBER")
     }
 
     @Test
@@ -99,13 +97,13 @@ class DataUtilsTest {
         def prefix = "A".postfix()
         def filePath = new File(this.class.getResource("sample.osm").toURI()).absolutePath
         assert !DataUtils.load(null, prefix, filePath)
-        assert !DataUtils.load(CONNECTION, null, filePath)
+        assert !DataUtils.load(SQL, null, filePath)
         assert !DataUtils.load(null, null, filePath)
-        assert !DataUtils.load(CONNECTION, prefix, null)
+        assert !DataUtils.load(SQL, prefix, null)
         assert !DataUtils.load(null, prefix, null)
-        assert !DataUtils.load(CONNECTION, null, null)
+        assert !DataUtils.load(SQL, null, null)
         assert !DataUtils.load(null, null, null)
 
-        assert !DataUtils.load(CONNECTION, "é#%ø£µ**/", filePath)
+        assert !DataUtils.load(SQL, "é#%ø£µ**/", filePath)
     }
 }

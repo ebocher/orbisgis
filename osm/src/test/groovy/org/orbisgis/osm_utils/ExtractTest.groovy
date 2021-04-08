@@ -36,8 +36,8 @@
  */
 package org.orbisgis.osm_utils
 
+import groovy.sql.Sql
 import org.h2gis.functions.factory.H2GISDBFactory
-import org.h2gis.utilities.JDBCUtilities
 import org.h2gis.utilities.TableLocation
 import org.h2gis.utilities.dbtypes.DBTypes
 import org.junit.jupiter.api.BeforeAll
@@ -49,7 +49,6 @@ import org.locationtech.jts.geom.Polygon
 import org.locationtech.jts.io.WKTReader
 import org.orbisgis.osm_utils.utils.DataUtils
 
-import java.sql.Connection
 
 import static org.h2gis.utilities.JDBCUtilities.*
 import static org.junit.jupiter.api.Assertions.fail
@@ -63,14 +62,14 @@ import static org.junit.jupiter.api.Assertions.fail
 class ExtractTest {
     protected static def uuidRegex = "[0-9a-f]{8}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{12}"
     private static String DB_NAME
-    private static Connection connection
+    private static Sql sql
     private static final Extract EXTRACT = new Extract();
     private static final def FACTORY = new GeometryFactory()
 
     @BeforeAll
     static final void beforeAll(){
         DB_NAME = (this.simpleName.postfix()).toUpperCase()
-        connection = H2GISDBFactory.createSpatialDataBase("./target/" + DB_NAME)
+        sql = new Sql(H2GISDBFactory.createSpatialDataBase("./target/" + DB_NAME))
     }
 
     /**
@@ -84,8 +83,8 @@ class ExtractTest {
                                     new Coordinate(0.0, 0.0)]
         def polygon = FACTORY.createPolygon(coordinates)
         assert !EXTRACT.fromArea(null, polygon)
-        assert !EXTRACT.fromArea(connection, null)
-        assert !EXTRACT.fromArea(connection, polygon, -1)
+        assert !EXTRACT.fromArea(sql, null)
+        assert !EXTRACT.fromArea(sql, polygon, -1)
     }
 
     /**
@@ -102,7 +101,7 @@ class ExtractTest {
         def env = polygon.getEnvelopeInternal()
 
         //With polygon
-        def r = EXTRACT.fromArea(connection, polygon)
+        def r = EXTRACT.fromArea(sql, polygon)
         assert !r.isEmpty()
         assert r.containsKey("zoneTableName")
         assert "ZONE_$uuidRegex".compileRegex().matcher(r.zoneTableName).matches()
@@ -114,23 +113,21 @@ class ExtractTest {
         assert 4326, r.epsg
 
         def zone = TableLocation.parse(r.zoneTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zone)
-        assert 1 == getColumnNames(connection, zone).size()
-        assert getColumnNames(connection, zone).contains("THE_GEOM")
-        def rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneTableName)
-        rs.next()
-        assert "POLYGON ((0 0, 0.004 0.008, 0.007 0.005, 0 0))", rs.getObject(1).toText()
+        assert 1 == getRowCount(sql.connection, zone)
+        assert 1 == getColumnNames(sql.connection, zone).size()
+        assert getColumnNames(sql.connection, zone).contains("THE_GEOM")
+        def rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneTableName)
+        assert "POLYGON ((0 0, 0.004 0.008, 0.007 0.005, 0 0))", rs.THE_GEOM.toText()
 
         def zoneEnv = TableLocation.parse(r.zoneEnvelopeTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zoneEnv)
-        assert 1 == getColumnNames(connection, zoneEnv).size()
-        assert getColumnNames(connection, zoneEnv).contains("THE_GEOM")
-        rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
-        rs.next()
-        assert "POLYGON ((0 0, 0 0.008, 0.007 0.008, 0.007 0, 0 0))", rs.getObject(1).toText()
+        assert 1 == getRowCount(sql.connection, zoneEnv)
+        assert 1 == getColumnNames(sql.connection, zoneEnv).size()
+        assert getColumnNames(sql.connection, zoneEnv).contains("THE_GEOM")
+        rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
+        assert "POLYGON ((0 0, 0 0.008, 0.007 0.008, 0.007 0, 0 0))",rs.THE_GEOM.toText()
 
         //With Envelope
-        r = EXTRACT.fromArea(connection, env)
+        r = EXTRACT.fromArea(sql, env)
         assert !r.isEmpty()
         assert r.containsKey("zoneTableName")
         assert "ZONE_$uuidRegex".compileRegex().matcher(r.zoneTableName).matches()
@@ -142,21 +139,18 @@ class ExtractTest {
         assert 4326, r.epsg
 
         zone = TableLocation.parse(r.zoneTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zone)
-        assert 1 == getColumnNames(connection, zone).size()
-        assert getColumnNames(connection, zone).contains("THE_GEOM")
-        rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneTableName)
-        rs.next()
-        assert "POLYGON ((0 0, 0 0.008, 0.007 0.008, 0.007 0, 0 0))", rs.getObject(1).toText()
+        assert 1 == getRowCount(sql.connection, zone)
+        assert 1 == getColumnNames(sql.connection, zone).size()
+        assert getColumnNames(sql.connection, zone).contains("THE_GEOM")
+        rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneTableName)
+        assert "POLYGON ((0 0, 0 0.008, 0.007 0.008, 0.007 0, 0 0))", rs.THE_GEOM.toText()
 
         zoneEnv = TableLocation.parse(r.zoneEnvelopeTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zoneEnv)
-        assert 1 == getColumnNames(connection, zoneEnv).size()
-        assert getColumnNames(connection, zoneEnv).contains("THE_GEOM")
-        rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
-        rs.next()
-        assert "POLYGON ((0 0, 0 0.008, 0.007 0.008, 0.007 0, 0 0))", rs.getObject(1).toText()
-
+        assert 1 == getRowCount(sql.connection, zoneEnv)
+        assert 1 == getColumnNames(sql.connection, zoneEnv).size()
+        assert getColumnNames(sql.connection, zoneEnv).contains("THE_GEOM")
+        rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
+        assert "POLYGON ((0 0, 0 0.008, 0.007 0.008, 0.007 0, 0 0))", rs.THE_GEOM.toText()
     }
 
     /**
@@ -177,7 +171,7 @@ class ExtractTest {
         def env = polygon.getEnvelopeInternal()
 
         //With polygon
-        def r = EXTRACT.fromArea(connection, polygon, dist)
+        def r = EXTRACT.fromArea(sql, polygon, dist)
         assert !r.isEmpty()
         assert r.containsKey("zoneTableName")
         assert "ZONE_$uuidRegex".compileRegex().matcher(r.zoneTableName).matches()
@@ -187,24 +181,22 @@ class ExtractTest {
         assert "OSM_DATA_$uuidRegex".compileRegex().matcher(r.osmTablesPrefix).matches()
 
         def zone = TableLocation.parse(r.zoneTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zone)
-        assert 1 == getColumnNames(connection, zone).size()
-        assert getColumnNames(connection, zone).contains("THE_GEOM")
-        def rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneTableName)
-        rs.next()
-        assert wktReader.read("POLYGON ((0 0, 2 0, 2 2, 0 2, 0 0))"), rs.getGeometry(1)
+        assert 1 == getRowCount(sql.connection, zone)
+        assert 1 == getColumnNames(sql.connection, zone).size()
+        assert getColumnNames(sql.connection, zone).contains("THE_GEOM")
+        def rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneTableName)
+        assert wktReader.read("POLYGON ((0 0, 2 0, 2 2, 0 2, 0 0))"), rs.THE_GEOM
 
         def zoneEnv = TableLocation.parse(r.zoneEnvelopeTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zoneEnv)
-        assert 1 == getColumnNames(connection, zoneEnv).size()
-        assert getColumnNames(connection, zoneEnv).contains("THE_GEOM")
-        rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
-        rs.next()
-        assert wktReader.read("POLYGON ((-0.008988628470795 -0.0089831528411952, -0.008988628470795 2.008983152841195, 2.008988628470795 2.008983152841195, 2.008988628470795 -0.0089831528411952, -0.008988628470795 -0.0089831528411952))"), rs.getGeometry(1)
+        assert 1 == getRowCount(sql.connection, zoneEnv)
+        assert 1 == getColumnNames(sql.connection, zoneEnv).size()
+        assert getColumnNames(sql.connection, zoneEnv).contains("THE_GEOM")
+        rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
+        assert wktReader.read("POLYGON ((-0.008988628470795 -0.0089831528411952, -0.008988628470795 2.008983152841195, 2.008988628470795 2.008983152841195, 2.008988628470795 -0.0089831528411952, -0.008988628470795 -0.0089831528411952))"), rs.THE_GEOM
 
 
         //With envelope
-        r = EXTRACT.fromArea(connection, env, dist)
+        r = EXTRACT.fromArea(sql, env, dist)
         assert !r.isEmpty()
         assert r.containsKey("zoneTableName")
         assert "ZONE_$uuidRegex".compileRegex().matcher(r.zoneTableName).matches()
@@ -214,20 +206,18 @@ class ExtractTest {
         assert "OSM_DATA_$uuidRegex".compileRegex().matcher(r.osmTablesPrefix).matches()
 
         zone = TableLocation.parse(r.zoneTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zone)
-        assert 1 == getColumnNames(connection, zone).size()
-        assert getColumnNames(connection, zone).contains("THE_GEOM")
-        rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneTableName)
-        rs.next()
-        assert wktReader.read("POLYGON ((0 0, 0 2, 2 2, 2 0, 0 0))"), rs.getGeometry(1)
+        assert 1 == getRowCount(sql.connection, zone)
+        assert 1 == getColumnNames(sql.connection, zone).size()
+        assert getColumnNames(sql.connection, zone).contains("THE_GEOM")
+        rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneTableName)
+        assert wktReader.read("POLYGON ((0 0, 0 2, 2 2, 2 0, 0 0))"), rs.THE_GEOM
 
         zoneEnv = TableLocation.parse(r.zoneEnvelopeTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zoneEnv)
-        assert 1 == getColumnNames(connection, zoneEnv).size()
-        assert getColumnNames(connection, zoneEnv).contains("THE_GEOM")
-        rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
-        rs.next()
-        assert wktReader.read("POLYGON ((-0.008988628470795 -0.0089831528411952, -0.008988628470795 2.008983152841195, 2.008988628470795 2.008983152841195, 2.008988628470795 -0.0089831528411952, -0.008988628470795 -0.0089831528411952))"), zoneEnv.getGeometry(1)
+        assert 1 == getRowCount(sql.connection, zoneEnv)
+        assert 1 == getColumnNames(sql.connection, zoneEnv).size()
+        assert getColumnNames(sql.connection, zoneEnv).contains("THE_GEOM")
+        rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
+        assert wktReader.read("POLYGON ((-0.008988628470795 -0.0089831528411952, -0.008988628470795 2.008983152841195, 2.008988628470795 2.008983152841195, 2.008988628470795 -0.0089831528411952, -0.008988628470795 -0.0089831528411952))"), rs.THE_GEOM
     }
 
     /**
@@ -239,7 +229,7 @@ class ExtractTest {
         def placeName = "  Saint jean la poterie  "
         def formattedPlaceName = "Saint_jean_la_poterie_"
 
-        def r = EXTRACT.fromPlace(connection, placeName)
+        def r = EXTRACT.fromPlace(sql, placeName)
         assert !r.isEmpty()
         assert r.containsKey("zoneTableName")
         assert "ZONE_$formattedPlaceName$uuidRegex".compileRegex().matcher(r.zoneTableName).matches()
@@ -249,23 +239,21 @@ class ExtractTest {
         assert "OSM_DATA_$formattedPlaceName$uuidRegex".compileRegex().matcher(r.osmTablesPrefix).matches()
 
         def zone = TableLocation.parse(r.zoneTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zone)
-        assert 2 == getColumnNames(connection, zone).size()
-        assert getColumnNames(connection, zone).contains("THE_GEOM")
-        assert getColumnNames(connection, zone).contains("ID_ZONE")
-        def rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneTableName)
-        rs.next()
-        assert rs.getObject(1) instanceof Polygon
+        assert 1 == getRowCount(sql.connection, zone)
+        assert 2 == getColumnNames(sql.connection, zone).size()
+        assert getColumnNames(sql.connection, zone).contains("THE_GEOM")
+        assert getColumnNames(sql.connection, zone).contains("ID_ZONE")
+        def rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneTableName)
+        assert rs.THE_GEOM instanceof Polygon
         assert placeName, rs.getString(2)
 
         def zoneEnv = TableLocation.parse(r.zoneEnvelopeTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zoneEnv)
-        assert 2 == getColumnNames(connection, zoneEnv).size()
-        assert getColumnNames(connection, zoneEnv).contains("THE_GEOM")
-        assert getColumnNames(connection, zoneEnv).contains("ID_ZONE")
-        rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
-        rs.next()
-        assert rs.getObject(1) instanceof Polygon
+        assert 1 == getRowCount(sql.connection, zoneEnv)
+        assert 2 == getColumnNames(sql.connection, zoneEnv).size()
+        assert getColumnNames(sql.connection, zoneEnv).contains("THE_GEOM")
+        assert getColumnNames(sql.connection, zoneEnv).contains("ID_ZONE")
+        rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
+        assert rs.THE_GEOM instanceof Polygon
         assert placeName, rs.getString(2)
     }
 
@@ -278,7 +266,7 @@ class ExtractTest {
         def placeName = "  Saint jean la poterie  "
         def dist = 5
         def formattedPlaceName = "Saint_jean_la_poterie_"
-        def r =  EXTRACT.fromPlace(connection, placeName, dist)
+        def r =  EXTRACT.fromPlace(sql, placeName, dist)
         assert !r.isEmpty()
         assert r.containsKey("zoneTableName")
         assert "ZONE_$formattedPlaceName$uuidRegex".compileRegex().matcher(r.zoneTableName).matches()
@@ -288,23 +276,21 @@ class ExtractTest {
         assert "OSM_DATA_$formattedPlaceName$uuidRegex".compileRegex().matcher(r.osmTablesPrefix).matches()
 
         def zone = TableLocation.parse(r.zoneTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zone)
-        assert 2 == getColumnNames(connection, zone).size()
-        assert getColumnNames(connection, zone).contains("THE_GEOM")
-        assert getColumnNames(connection, zone).contains("ID_ZONE")
-        def rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneTableName)
-        rs.next()
-        assert rs.getObject(1) instanceof Polygon
+        assert 1 == getRowCount(sql.connection, zone)
+        assert 2 == getColumnNames(sql.connection, zone).size()
+        assert getColumnNames(sql.connection, zone).contains("THE_GEOM")
+        assert getColumnNames(sql.connection, zone).contains("ID_ZONE")
+        def rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneTableName)
+        assert rs.THE_GEOM instanceof Polygon
         assert placeName, rs.getString(2)
 
         def zoneEnv = TableLocation.parse(r.zoneEnvelopeTableName, DBTypes.H2)
-        assert 1 == getRowCount(connection, zoneEnv)
-        assert 2 == getColumnNames(connection, zoneEnv).size()
-        assert getColumnNames(connection, zoneEnv).contains("THE_GEOM")
-        assert getColumnNames(connection, zoneEnv).contains("ID_ZONE")
-        rs = connection.createStatement().executeQuery("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
-        rs.next()
-        assert rs.getObject(1) instanceof Polygon
+        assert 1 == getRowCount(sql.connection, zoneEnv)
+        assert 2 == getColumnNames(sql.connection, zoneEnv).size()
+        assert getColumnNames(sql.connection, zoneEnv).contains("THE_GEOM")
+        assert getColumnNames(sql.connection, zoneEnv).contains("ID_ZONE")
+        rs = sql.firstRow("SELECT THE_GEOM FROM "+r.zoneEnvelopeTableName)
+        assert rs.THE_GEOM instanceof Polygon
         assert placeName, rs.getString(2)
     }
 
@@ -316,10 +302,10 @@ class ExtractTest {
         def placeName = "  The place Name -toFind  "
         def dist = -5
 
-        def results = EXTRACT.fromPlace(connection, placeName, dist)
+        def results = EXTRACT.fromPlace(sql, placeName, dist)
         assert !results
 
-        results = EXTRACT.fromPlace(connection, null)
+        results = EXTRACT.fromPlace(sql, null)
         assert !results
 
         results = EXTRACT.fromPlace(null, placeName)
@@ -342,14 +328,14 @@ class ExtractTest {
         assert !DataUtils.load(null, prefix, osmFile.absolutePath)
 
         //Null prefix
-        assert !DataUtils.load(connection, null, osmFile.absolutePath)
+        assert !DataUtils.load(sql, null, osmFile.absolutePath)
         //Bad prefix
-        assert !DataUtils.load(connection, "(╯°□°）╯︵ ┻━┻", osmFile.absolutePath)
+        assert !DataUtils.load(sql, "(╯°□°）╯︵ ┻━┻", osmFile.absolutePath)
 
         //Null path
-        assert !DataUtils.load(connection, prefix, null)
+        assert !DataUtils.load(sql, prefix, null)
         //Unexisting path
-        assert !DataUtils.load(connection, prefix, "ᕕ(ᐛ)ᕗ")
+        assert !DataUtils.load(sql, prefix, "ᕕ(ᐛ)ᕗ")
     }
 
     /**
@@ -364,25 +350,25 @@ class ExtractTest {
         assert  osmFile.isFile()
         def prefix = "OSM_".prefix("load").toUpperCase()
 
-        assert DataUtils.load(connection, prefix, osmFile.absolutePath)
+        assert DataUtils.load(sql, prefix, osmFile.absolutePath)
 
         //Test on DataSource
         def tableArray = ["${prefix}_NODE", "${prefix}_NODE_MEMBER", "${prefix}_NODE_TAG",
                           "${prefix}_WAY", "${prefix}_WAY_MEMBER","${prefix}_WAY_TAG", "${prefix}_WAY_NODE",
                           "${prefix}_RELATION", "${prefix}_RELATION_MEMBER", "${prefix}_RELATION_TAG"]
         tableArray.each { name ->
-            assert !getTableNames(connection, null, null, null, null).contains(name), "The table named $name is not in the datasource"
+            assert !getTableNames(sql.connection, null, null, null, null).contains(name), "The table named $name is not in the datasource"
         }
 
         //NODE
         //Test on NODE table
         def nodeTable = TableLocation.parse(tableArray[0], DBTypes.H2)
         assert nodeTable
-        assert 5 == getRowCount(connection, nodeTable.toString())
+        assert 5 == getRowCount(sql.connection, nodeTable.toString())
         def arrayNode = ["ID_NODE", "THE_GEOM", "ELE", "USER_NAME", "UID", "VISIBLE", "VERSION", "CHANGESET",
                      "LAST_UPDATE", "NAME"] as String[]
-        assert arrayNode == getColumnNames(connection, nodeTable.toString()) as String[]
-        def rs = connection.rows("SELECT * FROM ${nodeTable.toString(DBTypes.H2)}")
+        assert arrayNode == getColumnNames(sql.connection, nodeTable.toString()) as String[]
+        def rs = sql.rows("SELECT * FROM ${nodeTable.toString(DBTypes.H2)}".toString())
         rs.eachWithIndex { row, i ->
             switch(i){
                 case 0:
@@ -458,10 +444,10 @@ class ExtractTest {
         //Test on NODE_MEMBER table
         def nodeMemberTable = TableLocation.parse(tableArray[1], DBTypes.H2)
         assert nodeMemberTable
-        assert 2 == getRowCount(connection, nodeMemberTable.toString())
+        assert 2 == getRowCount(sql.connection, nodeMemberTable.toString())
         def arrayNodeMember = ["ID_RELATION", "ID_NODE", "ROLE", "NODE_ORDER"] as String[]
-        assert arrayNodeMember == getColumnNames(connection, nodeMemberTable.toString()) as String[]
-        rs = connection.rows("SELECT * FROM ${nodeMemberTable.toString()}")
+        assert arrayNodeMember == getColumnNames(sql.connection, nodeMemberTable.toString()) as String[]
+        rs = sql.rows("SELECT * FROM ${nodeMemberTable.toString()}".toString())
         rs.eachWithIndex { row, i ->
             switch(i){
                 case 0:
@@ -484,10 +470,10 @@ class ExtractTest {
         //Test on NODE_TAG table
         def nodeTagTable = TableLocation.parse(tableArray[2], DBTypes.H2)
         assert nodeTagTable
-        assert 2 == getRowCount(connection, nodeTagTable.toString())
+        assert 2 == getRowCount(sql.connection, nodeTagTable.toString())
         def arrayNodeTag = ["ID_NODE", "TAG_KEY", "TAG_VALUE"] as String[]
-        assert arrayNodeTag == getColumnNames(connection, nodeTagTable.toString()) as String[]
-        rs = connection.rows("SELECT * FROM ${nodeTagTable.toString()}")
+        assert arrayNodeTag == getColumnNames(sql.connection, nodeTagTable.toString()) as String[]
+        rs = sql.rows("SELECT * FROM ${nodeTagTable.toString()}".toString())
         rs.eachWithIndex { row, i ->
             switch(i){
                 case 0:
@@ -509,11 +495,11 @@ class ExtractTest {
         //Test on WAY table
         def wayTable = TableLocation.parse(tableArray[3], DBTypes.H2)
         assert wayTable
-        assert 1 == getRowCount(connection, wayTable.toString())
+        assert 1 == getRowCount(sql.connection, wayTable.toString())
         def arrayWay = ["ID_WAY", "USER_NAME", "UID", "VISIBLE", "VERSION", "CHANGESET",
                          "LAST_UPDATE", "NAME"] as String[]
-        assert arrayWay == getColumnNames(connection, wayTable.toString()) as String[]
-        rs = connection.rows("SELECT * FROM ${wayTable.toString()}")
+        assert arrayWay == getColumnNames(sql.connection, wayTable.toString()) as String[]
+        rs = sql.rows("SELECT * FROM ${wayTable.toString()}".toString())
         rs.eachWithIndex { row, i ->
             switch(i){
                 case 0:
@@ -534,10 +520,10 @@ class ExtractTest {
         //Test on WAY_MEMBER table
         def wayMemberTable = TableLocation.parse(tableArray[4], DBTypes.H2)
         assert wayMemberTable
-        assert 1 == getRowCount(connection, wayMemberTable.toString())
+        assert 1 == getRowCount(sql.connection, wayMemberTable.toString())
         def arrayWayMember = ["ID_RELATION", "ID_WAY", "ROLE", "WAY_ORDER"] as String[]
-        assert arrayWayMember == getColumnNames(connection, wayMemberTable.toString()) as String[]
-        rs = connection.rows("SELECT * FROM ${wayMemberTable.toString()}")
+        assert arrayWayMember == getColumnNames(sql.connection, wayMemberTable.toString()) as String[]
+        rs = sql.rows("SELECT * FROM ${wayMemberTable.toString()}".toString())
         rs.eachWithIndex { row, i ->
             switch(i){
                 case 0:
@@ -554,10 +540,10 @@ class ExtractTest {
         //Test on WAY_TAG table
         def wayTagTable = TableLocation.parse(tableArray[5], DBTypes.H2).toString()
         assert wayTagTable
-        assert 1 == getRowCount(connection, wayTagTable)
+        assert 1 == getRowCount(sql.connection, wayTagTable)
         def arrayWayTag = ["ID_WAY", "TAG_KEY", "TAG_VALUE"] as String[]
-        assert arrayWayTag == getColumnNames(connection, wayTagTable) as String[]
-        rs = connection.rows("SELECT * FROM ${wayTagTable}")
+        assert arrayWayTag == getColumnNames(sql.connection, wayTagTable) as String[]
+        rs = sql.rows("SELECT * FROM ${wayTagTable}".toString())
         rs.eachWithIndex { row, i ->
             switch(i){
                 case 0:
@@ -573,10 +559,10 @@ class ExtractTest {
         //Test on WAY_NODE table
         def wayNodeTable = TableLocation.parse(tableArray[6], DBTypes.H2).toString()
         assert wayNodeTable
-        assert 3 == getRowCount(connection, wayNodeTable)
+        assert 3 == getRowCount(sql.connection, wayNodeTable)
         def arrayWayNode = ["ID_WAY", "ID_NODE", "NODE_ORDER"] as String[]
-        assert arrayWayNode == getColumnNames(connection, wayNodeTable) as String[]
-        rs = connection.rows("SELECT * FROM ${wayNodeTable}")
+        assert arrayWayNode == getColumnNames(sql.connection, wayNodeTable) as String[]
+        rs = sql.rows("SELECT * FROM ${wayNodeTable}".toString())
         rs.eachWithIndex { row, i ->
             switch(i){
                 case 0:
@@ -603,11 +589,11 @@ class ExtractTest {
         //Test on RELATION table
         def relationTable = TableLocation.parse(tableArray[7], DBTypes.H2).toString()
         assert relationTable
-        assert 1 == getRowCount(connection, relationTable)
+        assert 1 == getRowCount(sql.connection, relationTable)
         def arrayRelation = ["ID_RELATION", "USER_NAME", "UID", "VISIBLE", "VERSION", "CHANGESET",
                         "LAST_UPDATE"] as String[]
-        assert arrayRelation == getColumnNames(connection, relationTable) as String[]
-        rs = connection.rows("SELECT * FROM ${relationTable}")
+        assert arrayRelation == getColumnNames(sql.connection, relationTable) as String[]
+        rs = sql.rows("SELECT * FROM ${relationTable}".toString())
         rs.eachWithIndex { row, i ->
             switch(i){
                 case 0:
@@ -627,17 +613,17 @@ class ExtractTest {
         //Test on RELATION_MEMBER table
         def relationMemberTable = TableLocation.parse(tableArray[8], DBTypes.H2).toString()
         assert relationMemberTable
-        assert 0 == getRowCount(connection, relationMemberTable)
+        assert 0 == getRowCount(sql.connection, relationMemberTable)
         def arrayRelationMember = ["ID_RELATION", "ID_SUB_RELATION", "ROLE", "RELATION_ORDER"] as String[]
-        assert arrayRelationMember == getColumnNames(connection, relationMemberTable) as String[]
+        assert arrayRelationMember == getColumnNames(sql.connection, relationMemberTable) as String[]
 
         //Test on RELATION_TAG table
         def relationTagTable = TableLocation.parse(tableArray[9], DBTypes.H2).toString()
         assert relationTagTable
-        assert 2 == getRowCount(connection, relationTagTable)
+        assert 2 == getRowCount(sql.connection, relationTagTable)
         def arrayRelationTag = ["ID_RELATION", "TAG_KEY", "TAG_VALUE"] as String[]
-        assert arrayRelationTag == getColumnNames(connection, relationTagTable) as String[]
-        rs = connection.rows("SELECT * FROM ${relationTagTable}")
+        assert arrayRelationTag == getColumnNames(sql.connection, relationTagTable) as String[]
+        rs = sql.rows("SELECT * FROM ${relationTagTable}".toString())
         rs.eachWithIndex { row, i ->
             switch(i){
                 case 0:
@@ -658,7 +644,7 @@ class ExtractTest {
 
 
     /**
-     * Test the {@link org.orbisgis.osm_utils.Extract#nodesAsPoints(java.sql.Connection, java.lang.String, java.lang.String, int, java.lang.Object, java.lang.Object)}
+     * Test the {@link org.orbisgis.osm_utils.Extract#nodesAsPoints(Sql, java.lang.String, java.lang.String, int, java.lang.Object, java.lang.Object)}
      * method with bad data.
      */
     @Test
@@ -673,58 +659,58 @@ class ExtractTest {
         tags.put('key1', null)
         def columnsToKeep = []
 
-        loadDataForNodeExtraction(connection, prefix)
+        loadDataForNodeExtraction(sql, prefix)
 
         assert !EXTRACT.nodesAsPoints(null, prefix, outTable, epsgCode, tags, columnsToKeep)
-        assert !EXTRACT.nodesAsPoints(connection, null, outTable, epsgCode, tags, columnsToKeep)
-        assert !EXTRACT.nodesAsPoints(connection, prefix, outTable, -1, tags, columnsToKeep)
-        assert !EXTRACT.nodesAsPoints(connection, prefix, null, epsgCode, tags, columnsToKeep)
+        assert !EXTRACT.nodesAsPoints(sql, null, outTable, epsgCode, tags, columnsToKeep)
+        assert !EXTRACT.nodesAsPoints(sql, prefix, outTable, -1, tags, columnsToKeep)
+        assert !EXTRACT.nodesAsPoints(sql, prefix, null, epsgCode, tags, columnsToKeep)
 
-        assert !OSMTools.Extract.nodesAsPoints(connection, prefix, outTable, epsgCode, [house:"false", path:'false'], null)
+        assert !OSMTools.Extract.nodesAsPoints(sql, prefix, outTable, epsgCode, [house:"false", path:'false'], null)
     }
 
-    private static loadDataForNodeExtraction(def connection, def prefix){
-        connection.execute "CREATE TABLE ${prefix}_node (id_node int, the_geom geometry)"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (1, 'POINT(0 0)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (2, 'POINT(1 1)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (3, 'POINT(2 2)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (4, 'POINT(56.23 78.23)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (5, 'POINT(-5.3 -45.23)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (6, 'POINT(-5.3 -45.23)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (7, 'POINT(-5.3 -45.23)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (8, 'POINT(-5.3 -45.23)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (9, 'POINT(-5.3 -45.23)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (10, 'POINT(-5.3 -45.23)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (11, 'POINT(-5.3 -45.23)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (12, 'POINT(-5.3 -45.23)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (13, 'POINT(-5.3 -45.23)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (14, 'POINT(-5.3 -45.23)')"
-        connection.execute "INSERT INTO ${prefix}_node VALUES (15, 'POINT(-5.3 -45.23)')"
+    private static loadDataForNodeExtraction(def sql, def prefix){
+        sql.execute """CREATE TABLE ${prefix}_node (id_node int, the_geom geometry);
+        INSERT INTO ${prefix}_node VALUES (1, 'POINT(0 0)');
+        INSERT INTO ${prefix}_node VALUES (2, 'POINT(1 1)');
+        INSERT INTO ${prefix}_node VALUES (3, 'POINT(2 2)');
+        INSERT INTO ${prefix}_node VALUES (4, 'POINT(56.23 78.23)');
+        INSERT INTO ${prefix}_node VALUES (5, 'POINT(-5.3 -45.23)');
+        INSERT INTO ${prefix}_node VALUES (6, 'POINT(-5.3 -45.23)');
+        INSERT INTO ${prefix}_node VALUES (7, 'POINT(-5.3 -45.23)');
+        INSERT INTO ${prefix}_node VALUES (8, 'POINT(-5.3 -45.23)');
+        INSERT INTO ${prefix}_node VALUES (9, 'POINT(-5.3 -45.23)');
+        INSERT INTO ${prefix}_node VALUES (10, 'POINT(-5.3 -45.23)');
+        INSERT INTO ${prefix}_node VALUES (11, 'POINT(-5.3 -45.23)');
+        INSERT INTO ${prefix}_node VALUES (12, 'POINT(-5.3 -45.23)');
+        INSERT INTO ${prefix}_node VALUES (13, 'POINT(-5.3 -45.23)');
+        INSERT INTO ${prefix}_node VALUES (14, 'POINT(-5.3 -45.23)');
+        INSERT INTO ${prefix}_node VALUES (15, 'POINT(-5.3 -45.23)')""".toString()
 
-        connection.execute "CREATE TABLE ${prefix}_node_tag (id_node int, tag_key varchar, tag_value varchar)"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (1, 'building', 'house')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (1, 'house', 'true')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (1, 'material', 'concrete')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (2, 'water', 'pound')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (3, 'material', 'concrete')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (4, 'build', 'house')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (5, 'material', 'brick')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (6, 'material', null)"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (7, null, 'value1')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (8, 'key', null)"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (8, 'key1', null)"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (9, 'key2', null)"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (10, 'values', 'value1')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (11, 'key3', null)"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (12, 'key3', 'val1')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (13, 'road', 'service')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (14, 'key4', 'service')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (15, 'road', 'service')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES (16, 'material', 'concrete')"
+        sql.execute """CREATE TABLE ${prefix}_node_tag (id_node int, tag_key varchar, tag_value varchar);
+        INSERT INTO ${prefix}_node_tag VALUES (1, 'building', 'house');
+        INSERT INTO ${prefix}_node_tag VALUES (1, 'house', 'true');
+        INSERT INTO ${prefix}_node_tag VALUES (1, 'material', 'concrete');
+        INSERT INTO ${prefix}_node_tag VALUES (2, 'water', 'pound');
+        INSERT INTO ${prefix}_node_tag VALUES (3, 'material', 'concrete');
+        INSERT INTO ${prefix}_node_tag VALUES (4, 'build', 'house');
+        INSERT INTO ${prefix}_node_tag VALUES (5, 'material', 'brick');
+        INSERT INTO ${prefix}_node_tag VALUES (6, 'material', null);
+        INSERT INTO ${prefix}_node_tag VALUES (7, null, 'value1');
+        INSERT INTO ${prefix}_node_tag VALUES (8, 'key', null);
+        INSERT INTO ${prefix}_node_tag VALUES (8, 'key1', null);
+        INSERT INTO ${prefix}_node_tag VALUES (9, 'key2', null);
+        INSERT INTO ${prefix}_node_tag VALUES (10, 'values', 'value1');
+        INSERT INTO ${prefix}_node_tag VALUES (11, 'key3', null);
+        INSERT INTO ${prefix}_node_tag VALUES (12, 'key3', 'val1');
+        INSERT INTO ${prefix}_node_tag VALUES (13, 'road', 'service');
+        INSERT INTO ${prefix}_node_tag VALUES (14, 'key4', 'service');
+        INSERT INTO ${prefix}_node_tag VALUES (15, 'road', 'service');
+        INSERT INTO ${prefix}_node_tag VALUES (16, 'material', 'concrete')""".toString()
     }
 
     /**
-     * Test the {@link org.orbisgis.osm_utils.Extract#nodesAsPoints(java.sql.Connection, java.lang.String, java.lang.String, int, java.lang.Object, java.lang.Object)}
+     * Test the {@link org.orbisgis.osm_utils.Extract#nodesAsPoints(Sql, java.lang.String, java.lang.String, int, java.lang.Object, java.lang.Object)}
      * method.
      */
     @Test
@@ -741,30 +727,31 @@ class ExtractTest {
         tags.put('key4', ["value1", "value2"])
         def columnsToKeep = ["key1"]
 
-        loadDataForNodeExtraction(connection, prefix)
+        loadDataForNodeExtraction(sql, prefix)
 
         //With tags
-        assert EXTRACT.nodesAsPoints(connection, prefix, outTable, epsgCode, tags, columnsToKeep)
+        assert EXTRACT.nodesAsPoints(sql, prefix, outTable, epsgCode, tags, columnsToKeep)
         def tableLoc = TableLocation.parse("output", DBTypes.H2)
-        assert tableExists(connection, tableLoc)
+        assert tableExists(sql.connection, tableLoc)
         def loc = tableLoc.toString()
-        assert 9 == getColumnNames(connection, loc).size()
-        assert getColumnNames(connection, loc).contains("ID_NODE")
-        assert getColumnNames(connection, loc).contains("THE_GEOM")
-        assert getColumnNames(connection, loc).contains("BUILDING")
-        assert getColumnNames(connection, loc).contains("MATERIAL")
-        assert getColumnNames(connection, loc).contains("ROAD")
-        assert getColumnNames(connection, loc).contains("KEY")
-        assert getColumnNames(connection, loc).contains("KEY1")
-        assert getColumnNames(connection, loc).contains("KEY3")
-        assert getColumnNames(connection, loc).contains("KEY4")
-        assert !getColumnNames(connection, loc).contains("WATER")
-        assert !getColumnNames(connection, loc).contains("KEY2")
-        assert !getColumnNames(connection, loc).contains("HOUSE")
-        assert !getColumnNames(connection, loc).contains("VALUES")
+        def columnNames = getColumnNames(sql.connection, loc)
+        assert 9 == columnNames.size()
+        assert columnNames.contains("ID_NODE")
+        assert columnNames.contains("THE_GEOM")
+        assert columnNames.contains("BUILDING")
+        assert columnNames.contains("MATERIAL")
+        assert columnNames.contains("ROAD")
+        assert columnNames.contains("KEY")
+        assert columnNames.contains("KEY1")
+        assert columnNames.contains("KEY3")
+        assert columnNames.contains("KEY4")
+        assert !columnNames.contains("WATER")
+        assert !columnNames.contains("KEY2")
+        assert !columnNames.contains("HOUSE")
+        assert !columnNames.contains("VALUES")
 
-        assert 9 == getRowCount(connection, loc)
-        def rs = connection.rows("SELECT * FROM ${loc}")
+        assert 9 == getRowCount(sql.connection, loc)
+        def rs = sql.rows("SELECT * FROM ${loc}".toString())
         rs.eachWithIndex {it, i ->
             switch(i){
                 case 0:
@@ -871,49 +858,51 @@ class ExtractTest {
         }
 
         //Without tags and with column to keep
-        assert EXTRACT.nodesAsPoints(connection, prefix, outTable, epsgCode, null, ["key1", "build"])
+        assert EXTRACT.nodesAsPoints(sql, prefix, outTable, epsgCode, null, ["key1", "build"])
         tableLoc = TableLocation.parse("output", DBTypes.H2)
-        assert tableExists(connection, tableLoc)
+        assert tableExists(sql.connection, tableLoc)
         loc = tableLoc.toString()
-        assert 4 == getColumnNames(connection, loc).size()
-        assert getColumnNames(connection, loc).contains("ID_NODE")
-        assert getColumnNames(connection, loc).contains("THE_GEOM")
-        assert getColumnNames(connection, loc).contains("BUILD")
-        assert getColumnNames(connection, loc).contains("KEY1")
-        assert !getColumnNames(connection, loc).contains("WATER")
-        assert !getColumnNames(connection, loc).contains("MATERIAL")
-        assert !getColumnNames(connection, loc).contains("ROAD")
-        assert !getColumnNames(connection, loc).contains("KEY")
-        assert !getColumnNames(connection, loc).contains("KEY2")
-        assert !getColumnNames(connection, loc).contains("KEY3")
-        assert !getColumnNames(connection, loc).contains("KEY4")
-        assert !getColumnNames(connection, loc).contains("HOUSE")
-        assert !getColumnNames(connection, loc).contains("BUILDING")
-        assert !getColumnNames(connection, loc).contains("VALUES")
+        columnNames =getColumnNames(sql.connection, loc)
+        assert 4 == columnNames.size()
+        assert columnNames.contains("ID_NODE")
+        assert columnNames.contains("THE_GEOM")
+        assert columnNames.contains("BUILD")
+        assert columnNames.contains("KEY1")
+        assert !columnNames.contains("WATER")
+        assert !columnNames.contains("MATERIAL")
+        assert !columnNames.contains("ROAD")
+        assert !columnNames.contains("KEY")
+        assert !columnNames.contains("KEY2")
+        assert !columnNames.contains("KEY3")
+        assert !columnNames.contains("KEY4")
+        assert !columnNames.contains("HOUSE")
+        assert !columnNames.contains("BUILDING")
+        assert !columnNames.contains("VALUES")
 
         //Without tags and columns to keep
-        assert EXTRACT.nodesAsPoints(connection, prefix, outTable, epsgCode, null, [])
+        assert EXTRACT.nodesAsPoints(sql, prefix, outTable, epsgCode, null, [])
         tableLoc = TableLocation.parse("output", DBTypes.H2)
-        assert tableExists(connection, tableLoc)
+        assert tableExists(sql.connection, tableLoc)
         loc = tableLoc.toString()
-        assert 14 == getColumnNames(connection, loc).size()
-        assert getColumnNames(connection, loc).contains("ID_NODE")
-        assert getColumnNames(connection, loc).contains("THE_GEOM")
-        assert getColumnNames(connection, loc).contains("BUILD")
-        assert getColumnNames(connection, loc).contains("BUILDING")
-        assert getColumnNames(connection, loc).contains("HOUSE")
-        assert getColumnNames(connection, loc).contains("KEY")
-        assert getColumnNames(connection, loc).contains("KEY1")
-        assert getColumnNames(connection, loc).contains("KEY2")
-        assert getColumnNames(connection, loc).contains("KEY3")
-        assert getColumnNames(connection, loc).contains("KEY4")
-        assert getColumnNames(connection, loc).contains("MATERIAL")
-        assert getColumnNames(connection, loc).contains("ROAD")
-        assert getColumnNames(connection, loc).contains("VALUES")
-        assert getColumnNames(connection, loc).contains("WATER")
+        columnNames = getColumnNames(sql.connection, loc)
+        assert 14 == columnNames.size()
+        assert columnNames.contains("ID_NODE")
+        assert columnNames.contains("THE_GEOM")
+        assert columnNames.contains("BUILD")
+        assert columnNames.contains("BUILDING")
+        assert columnNames.contains("HOUSE")
+        assert columnNames.contains("KEY")
+        assert columnNames.contains("KEY1")
+        assert columnNames.contains("KEY2")
+        assert columnNames.contains("KEY3")
+        assert columnNames.contains("KEY4")
+        assert columnNames.contains("MATERIAL")
+        assert columnNames.contains("ROAD")
+        assert columnNames.contains("VALUES")
+        assert columnNames.contains("WATER")
 
-        assert 15 == getRowCount(connection, loc)
-        rs = connection.rows("SELECT * FROM ${loc}")
+        assert 15 == getRowCount(sql.connection, loc)
+        rs = sql.rows("SELECT * FROM ${loc}".toString())
         rs.eachWithIndex {it, i ->
             switch(i){
                 case 0:

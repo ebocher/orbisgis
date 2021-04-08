@@ -36,11 +36,11 @@
  */
 package org.orbisgis.osm_utils.utils
 
+import groovy.sql.Sql
 import org.h2gis.functions.factory.H2GISDBFactory
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test
 
-import java.sql.Connection
 
 /**
  * Test class dedicated to {@link ExtractUtils}.
@@ -50,13 +50,13 @@ import java.sql.Connection
 class ExtractUtilsTest {
 
     private static final ExtractUtils extractUtils = new ExtractUtils()
-    private static Connection CONNECTION
+    private static Sql sql
     private static String DB_NAME
 
     @BeforeAll
     static void beforeAll() {
         DB_NAME = (this.simpleName.postfix()).toUpperCase()
-        CONNECTION = H2GISDBFactory.createSpatialDataBase("./target/" + DB_NAME)
+        sql = new Sql(H2GISDBFactory.createSpatialDataBase("./target/" + DB_NAME))
     }
 
     /**
@@ -219,28 +219,28 @@ class ExtractUtilsTest {
     void createTagListTest(){
         def osmTable = "toto"
 
-        CONNECTION.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
-        CONNECTION.execute("INSERT INTO toto VALUES (0, 'material', ('concrete', 'brick'))")
+        sql.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
+        sql.execute("INSERT INTO toto VALUES (0, 'material', ('concrete', 'brick'))")
         assert ", MAX(CASE WHEN b.tag_key = 'material' THEN b.tag_value END) AS \"MATERIAL\"" ==
-                extractUtils.createTagList(CONNECTION, "SELECT tag_key FROM $osmTable")
-        CONNECTION.execute("DROP TABLE IF EXISTS toto")
+                extractUtils.createTagList(sql, "SELECT tag_key FROM $osmTable")
+        sql.execute("DROP TABLE IF EXISTS toto")
 
-        CONNECTION.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
-        CONNECTION.execute("INSERT INTO toto VALUES (1, 'water', null)")
+        sql.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
+        sql.execute("INSERT INTO toto VALUES (1, 'water', null)")
         assert ", MAX(CASE WHEN b.tag_key = 'water' THEN b.tag_value END) AS \"WATER\"" ==
-                extractUtils.createTagList(CONNECTION, "SELECT tag_key FROM $osmTable")
-        CONNECTION.execute("DROP TABLE IF EXISTS toto")
+                extractUtils.createTagList(sql, "SELECT tag_key FROM $osmTable")
+        sql.execute("DROP TABLE IF EXISTS toto")
 
-        CONNECTION.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
-        CONNECTION.execute("INSERT INTO toto VALUES (2, 'road', '{}')")
+        sql.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
+        sql.execute("INSERT INTO toto VALUES (2, 'road', '{}')")
         assert ", MAX(CASE WHEN b.tag_key = 'road' THEN b.tag_value END) AS \"ROAD\"" ==
-                extractUtils.createTagList(CONNECTION, "SELECT tag_key FROM $osmTable")
-        CONNECTION.execute("DROP TABLE IF EXISTS toto")
+                extractUtils.createTagList(sql, "SELECT tag_key FROM $osmTable")
+        sql.execute("DROP TABLE IF EXISTS toto")
 
-        CONNECTION.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
-        CONNECTION.execute("INSERT INTO toto VALUES (0, 'material', ('concrete', 'brick'))")
+        sql.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
+        sql.execute("INSERT INTO toto VALUES (0, 'material', ('concrete', 'brick'))")
         assert !extractUtils.createTagList(null, "SELECT tag_key FROM $osmTable")
-        CONNECTION.execute("DROP TABLE IF EXISTS toto")
+        sql.execute("DROP TABLE IF EXISTS toto")
     }
 
     /**
@@ -251,14 +251,14 @@ class ExtractUtilsTest {
     void badCreateTagListTest(){
         def osmTable = "toto"
 
-        CONNECTION.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
-        CONNECTION.execute("INSERT INTO toto VALUES (3, null, ('lake', 'pound'))")
-        assert "" == extractUtils.createTagList(CONNECTION, "SELECT tag_key FROM $osmTable")
-        CONNECTION.execute("DROP TABLE IF EXISTS toto")
+        sql.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
+        sql.execute("INSERT INTO toto VALUES (3, null, ('lake', 'pound'))")
+        assert "" == extractUtils.createTagList(sql, "SELECT tag_key FROM $osmTable")
+        sql.execute("DROP TABLE IF EXISTS toto")
 
-        CONNECTION.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
-        CONNECTION.execute("INSERT INTO toto VALUES (4, null, null)")
-        assert "" == extractUtils.createTagList(CONNECTION, "SELECT tag_key FROM $osmTable")
-        CONNECTION.execute("DROP TABLE IF EXISTS toto")
+        sql.execute("CREATE TABLE toto (id int, tag_key varchar, tag_value array[255])")
+        sql.execute("INSERT INTO toto VALUES (4, null, null)")
+        assert "" == extractUtils.createTagList(sql, "SELECT tag_key FROM $osmTable")
+        sql.execute("DROP TABLE IF EXISTS toto")
     }
 }

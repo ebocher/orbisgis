@@ -42,7 +42,6 @@ import org.locationtech.jts.geom.Envelope
 import org.locationtech.jts.geom.Geometry
 import org.locationtech.jts.geom.GeometryFactory
 import org.locationtech.jts.geom.Polygon
-import org.orbisgis.osm_utils.OSMTools
 import org.orbisgis.osm_utils.overpass.OverpassStatus
 
 import static java.net.Proxy.NO_PROXY

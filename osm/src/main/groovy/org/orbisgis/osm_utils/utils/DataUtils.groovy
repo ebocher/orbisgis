@@ -36,35 +36,29 @@
  */
 package org.orbisgis.osm_utils.utils
 
+import groovy.sql.Sql
 import org.h2gis.api.EmptyProgressVisitor
 import org.h2gis.functions.io.osm.OSMDriverFunction
-import org.h2gis.utilities.JDBCUtilities
-import org.h2gis.utilities.TableLocation
-import org.h2gis.utilities.dbtypes.DBUtils
-
-import java.sql.Connection
-
-import static org.h2gis.utilities.JDBCUtilities.*
 
 /**
  * Utilities for the data gathering.
  *
- * @author Erwan Bocher (CNRS LAB-STICC)
- * @author Elisabeth Le Saux (UBS LAB-STICC)
+ * @author Erwan Bocher (CNRS LAB-STICC, 2019 - 2021)
+ * @author Elisabeth Le Saux (UBS LAB-STICC, 2020)
  * @author Sylvain PALOMINOS (UBS chaire GEOTERA 2020)
  */
 
 /**
  * This process is used to load an OSM file in a database.
  *
- * @param connection   A connection to a database
+ * @param sql   A groovy sql object
  * @param tablesPrefix A prefix to identify the 10 OSM tables
  * @param filePath     The path where the OSM file is
  *
  * @return True if the loading has been successfully done.
  */
-static boolean load(Connection connection, String tablesPrefix, def filePath) {
-    if (!connection) {
+static boolean load(Sql sql, String tablesPrefix, def filePath) {
+    if (!sql) {
         error "Invalid database connection"
         return
     }
@@ -84,7 +78,7 @@ static boolean load(Connection connection, String tablesPrefix, def filePath) {
 
     info "Load the data file in the database."
 
-    new OSMDriverFunction().importFile(connection, tablesPrefix, osmFile, true, new EmptyProgressVisitor())
+    new OSMDriverFunction().importFile(sql.getConnection(), tablesPrefix, osmFile, true, new EmptyProgressVisitor())
     info "The input data file has been loaded in the database."
 
     return true

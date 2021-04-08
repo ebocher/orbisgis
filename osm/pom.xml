@@ -30,11 +30,14 @@
             <groupId>org.orbisgis</groupId>
             <artifactId>common-utils</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-sql</artifactId>
         </dependency>
         <dependency>
             <groupId>org.codehaus.groovy</groupId>

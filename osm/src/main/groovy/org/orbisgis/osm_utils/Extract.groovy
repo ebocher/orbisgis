@@ -36,14 +36,16 @@
  */
 package org.orbisgis.osm_utils
 
+import groovy.sql.Sql
 import groovy.transform.Field
+import org.locationtech.jts.geom.Envelope
+import org.locationtech.jts.geom.GeometryFactory
 import org.locationtech.jts.geom.Polygon
 import org.orbisgis.osm_utils.utils.DataUtils
 import org.orbisgis.osm_utils.utils.ExtractUtils
 import org.orbisgis.osm_utils.utils.NominatimUtils
 import org.orbisgis.osm_utils.utils.OverpassUtils
-
-import java.sql.Connection
+import org.h2gis.utilities.GeographyUtilities
 
 import static org.orbisgis.osm_utils.overpass.OSMElement.*
 
@@ -54,7 +56,7 @@ import static org.orbisgis.osm_utils.overpass.OSMElement.*
  * This process extracts OSM data file and load it in a database using an area
  * The area must be a JTS envelope
  *
- * @param connection A connexion to a database used to load the OSM file. Must not be null.
+ * @param sql A SQL groovy object to manage the database used to load the OSM file. Must not be null.
  * @param filterArea Filtering area as envelope
  * @param distance to expand the envelope of the query box. Default is 0
  *
@@ -65,9 +67,9 @@ import static org.orbisgis.osm_utils.overpass.OSMElement.*
  * @author Elisabeth Le Saux (UBS LAB-STICC)
  * @author Sylvain PALOMINOS (UBS chaire GEOTERA 2020)
  */
-def fromArea(Connection connection, def filterArea, int distance = 0) {
+def fromArea(Sql sql, def filterArea, int distance = 0) {
     //Check the mandatory parameters
-    if(!connection) {
+    if(!sql) {
         error("No Connection provided.")
         return
     }
@@ -83,30 +85,34 @@ def fromArea(Connection connection, def filterArea, int distance = 0) {
     def outputZoneTable = "ZONE".postfix()
     def outputZoneEnvelopeTable = "ZONE_ENVELOPE".postfix()
     def osmTablesPrefix = "OSM_DATA".postfix()
-    def geom = filterArea as Polygon
-    if (!geom)  {
+    def geom
+    def factory =new GeometryFactory()
+    if (filterArea instanceof Envelope) {
+        geom = factory.toGeometry(filterArea)
+    } else if (filterArea instanceof Polygon) {
+        geom = filterArea
+    } else {
         error "The filter area must be an Envelope or a Polygon"
         return
     }
-
     def env = geom.getEnvelopeInternal().expandEnvelopeByMeters(distance)
 
     //Create table to store the geometry and the envelope of the extracted area
-    connection.execute("""
+    sql.execute("""
         CREATE TABLE $outputZoneTable (the_geom GEOMETRY(POLYGON, $DEFAULT_SRID));
         INSERT INTO $outputZoneTable VALUES (ST_GEOMFROMTEXT('${geom}', $DEFAULT_SRID));
-    """)
+    """.toString())
 
-    def geomEnv = env as Polygon
+    def geomEnv = factory.toGeometry(env)
 
-    connection.execute("CREATE TABLE $outputZoneEnvelopeTable (the_geom GEOMETRY(POLYGON, $DEFAULT_SRID));" +
+    sql.execute("CREATE TABLE $outputZoneEnvelopeTable (the_geom GEOMETRY(POLYGON, $DEFAULT_SRID));" +
             "INSERT INTO $outputZoneEnvelopeTable VALUES " +
-            "(ST_GEOMFROMTEXT('$geomEnv',$DEFAULT_SRID));")
+            "(ST_GEOMFROMTEXT('$geomEnv',$DEFAULT_SRID));".toString())
 
     def osmFilePath = OverpassUtils.extract(OverpassUtils.buildOSMQuery(geomEnv, NODE, WAY, RELATION))
     if (osmFilePath) {
         info "Downloading OSM data from the area $filterArea"
-        if (DataUtils.load(connection, osmTablesPrefix, osmFilePath)) {
+        if (DataUtils.load(sql, osmTablesPrefix, osmFilePath)) {
             info "Loading OSM data from the area $filterArea"
             return [zoneTableName        : outputZoneTable,
                     zoneEnvelopeTableName: outputZoneEnvelopeTable,
@@ -123,7 +129,7 @@ def fromArea(Connection connection, def filterArea, int distance = 0) {
 /**
  * This process extracts OSM data file and load it in a database using a place name
  *
- * @param connection A connexion to a DB to load the OSM file
+ * @param sql A connexion to a DB to load the OSM file
  * @param placeName The name of the place to extract
  * @param distance to expand the envelope of the query box. Default is 0
  *
@@ -133,12 +139,12 @@ def fromArea(Connection connection, def filterArea, int distance = 0) {
  * @author Erwan Bocher (CNRS LAB-STICC)
  * @author Elisabeth Le Saux (UBS LAB-STICC)
  */
-def fromPlace(Connection connection, String placeName, int distance = 0) {
+def fromPlace(Sql sql, String placeName, int distance = 0) {
     if(!placeName) {
         error("Cannot find an area from a void place name.")
         return
     }
-    if(!connection) {
+    if(!sql) {
         error("No Connection provided.")
         return
     }
@@ -157,25 +163,24 @@ def fromPlace(Connection connection, String placeName, int distance = 0) {
         error("Cannot use a negative distance")
         return
     }
-    def env = geom.getEnvelopeInternal().expandEnvelopeByMeters(distance)
+    def env = GeographyUtilities.expandEnvelopeByMeters(geom.getEnvelopeInternal(), distance)
 
     //Create table to store the geometry and the envelope of the extracted area
-    def st = connection.createStatement()
-    st.execute """
-        CREATE TABLE $outputZoneTable (the_geom GEOMETRY(POLYGON, $DEFAULT_SRID), ID_ZONE VARCHAR);
-        INSERT INTO $outputZoneTable VALUES (ST_GEOMFROMTEXT('${geom}', $DEFAULT_SRID), '$placeName');
-    """
+   sql.execute """
+        CREATE TABLE ${outputZoneTable} (the_geom GEOMETRY(POLYGON, $DEFAULT_SRID), ID_ZONE VARCHAR);
+        INSERT INTO ${outputZoneTable} VALUES (ST_GEOMFROMTEXT('${geom}', $DEFAULT_SRID), '$placeName');
+    """.toString()
 
-    def geomEnv = env as Polygon
-    st.execute """
+    def geomEnv = new GeometryFactory().toGeometry(env)
+    sql.execute """
         CREATE TABLE $outputZoneEnvelopeTable (the_geom GEOMETRY(POLYGON, $DEFAULT_SRID), ID_ZONE VARCHAR);
         INSERT INTO $outputZoneEnvelopeTable VALUES (ST_GEOMFROMTEXT('$geomEnv',$DEFAULT_SRID), '$placeName');
-    """
+    """.toString()
 
     def osmPath = OverpassUtils.extract(OverpassUtils.buildOSMQuery(geomEnv, NODE, WAY, RELATION))
     if (osmPath) {
         info "Downloading OSM data from the place $placeName"
-        if (DataUtils.load(connection, osmTablesPrefix, osmPath)) {
+        if (DataUtils.load(sql, osmTablesPrefix, osmPath)) {
             info "Loading OSM data from the place $placeName"
             return [zoneTableName        : outputZoneTable,
                     zoneEnvelopeTableName: outputZoneEnvelopeTable,
@@ -192,7 +197,7 @@ def fromPlace(Connection connection, String placeName, int distance = 0) {
 /**
  * This process is used to extract ways as polygons
  *
- * @param connection a connection to a database
+ * @param sql a connection to a database
  * @param osmTablesPrefix prefix name for OSM tables
  * @param epsgCode EPSG code to reproject the geometries
  * @param tags list of keys and values to be filtered
@@ -204,8 +209,8 @@ def fromPlace(Connection connection, String placeName, int distance = 0) {
  * @author Erwan Bocher (CNRS LAB-STICC)
  * @author Elisabeth Le Saux (UBS LAB-STICC)
  */
-def waysAsPolygons(Connection connection, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
-    if (!connection) {
+def waysAsPolygons(Sql sql, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
+    if (!sql) {
         error "Invalid database connection"
         return
     }
@@ -225,54 +230,54 @@ def waysAsPolygons(Connection connection, String osmTablesPrefix, int epsgCode =
     def columnsSelector = ExtractUtils.getColumnSelectorQuery(osmTableTag, tags, columnsToKeep)
     def tagsFilter = ExtractUtils.createWhereFilter(tags)
 
-    if (connection.firstRow(countTagsQuery).count <= 0) {
+    if (sql.firstRow(countTagsQuery.toString()).count <= 0) {
         warn "No keys or values found to extract ways. An empty table will be returned."
-        connection.execute(""" 
+        sql.execute(""" 
             DROP TABLE IF EXISTS $outputTableName;
             CREATE TABLE $outputTableName (the_geom GEOMETRY(GEOMETRY,$epsgCode));
-        """)
+        """.toString())
         return outputTableName
     }
 
     debug "Build way polygons"
     def waysPolygonTmp = "WAYS_POLYGONS_TMP".postfix()
-    connection.execute("DROP TABLE IF EXISTS $waysPolygonTmp;")
+    sql.execute("DROP TABLE IF EXISTS $waysPolygonTmp;".toString())
 
     if (tagsFilter) {
-        connection.execute("""
+        sql.execute("""
             DROP TABLE IF EXISTS $idWaysPolygons;
             CREATE TABLE $idWaysPolygons AS
                 SELECT DISTINCT id_way
                 FROM $osmTableTag
                 WHERE $tagsFilter;
             CREATE INDEX ON $idWaysPolygons(id_way);
-        """)
+        """.toString())
     } else {
-        connection.execute("""
+        sql.execute("""
             DROP TABLE IF EXISTS $idWaysPolygons;
             CREATE TABLE $idWaysPolygons AS
                 SELECT DISTINCT id_way
                 FROM $osmTableTag;
             CREATE INDEX ON $idWaysPolygons(id_way);
-        """)
+        """.toString())
     }
 
     if (columnsToKeep) {
-        if (connection.firstRow("""
+        if (sql.firstRow("""
             SELECT count(*) AS count 
             FROM $idWaysPolygons AS a, ${osmTablesPrefix}_WAY_TAG AS b 
             WHERE a.ID_WAY = b.ID_WAY AND b.TAG_KEY IN ('${columnsToKeep.join("','")}')
-        """)[0] < 1) {
+        """.toString())[0] < 1) {
             debug "Any columns to keep. Cannot create any geometry polygons. An empty table will be returned."
-            connection.execute("""
+            sql.execute("""
                 DROP TABLE IF EXISTS $outputTableName;
                 CREATE TABLE $outputTableName (the_geom GEOMETRY(GEOMETRY,$epsgCode));
-            """)
+            """.toString())
             return outputTableName
         }
     }
 
-    connection.execute("""
+    sql.execute("""
         CREATE TABLE $waysPolygonTmp AS
             SELECT ST_TRANSFORM(ST_SETSRID(ST_MAKEPOLYGON(ST_MAKELINE(the_geom)), 4326), $epsgCode) AS the_geom, id_way
             FROM(
@@ -291,21 +296,21 @@ def waysAsPolygons(Connection connection, String osmTablesPrefix, int epsgCode =
             WHERE ST_GEOMETRYN(the_geom, 1) = ST_GEOMETRYN(the_geom, ST_NUMGEOMETRIES(the_geom)) 
             AND ST_NUMGEOMETRIES(the_geom) > 3;
         CREATE INDEX ON $waysPolygonTmp(id_way);
-    """)
+    """.toString())
 
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS $outputTableName; 
         CREATE TABLE $outputTableName AS 
-            SELECT 'w'||a.id_way AS id, a.the_geom ${ExtractUtils.createTagList(connection, columnsSelector)} 
+            SELECT 'w'||a.id_way AS id, a.the_geom ${ExtractUtils.createTagList(sql, columnsSelector)} 
             FROM $waysPolygonTmp AS a, $osmTableTag b
             WHERE a.id_way=b.id_way
             GROUP BY a.id_way;
-    """)
+    """.toString())
 
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS $waysPolygonTmp;
         DROP TABLE IF EXISTS $idWaysPolygons;
-    """)
+    """.toString())
 
     outputTableName
 }
@@ -313,7 +318,7 @@ def waysAsPolygons(Connection connection, String osmTablesPrefix, int epsgCode =
 /**
  * This process is used to extract relations as polygons
  *
- * @param datasource a connection to a database
+ * @param sql a connection to a database
  * @param osmTablesPrefix prefix name for OSM tables
  * @param epsgCode EPSG code to reproject the geometries
  * @param tags list of keys and values to be filtered
@@ -325,8 +330,8 @@ def waysAsPolygons(Connection connection, String osmTablesPrefix, int epsgCode =
  * @author Erwan Bocher (CNRS LAB-STICC)
  * @author Elisabeth Le Saux (UBS LAB-STICC)
  */
-def relationsAsPolygons(Connection connection, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
-    if (!connection) {
+def relationsAsPolygons(Sql sql, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
+    if (!sql) {
         error "Invalid database connection"
         return
     }
@@ -345,12 +350,12 @@ def relationsAsPolygons(Connection connection, String osmTablesPrefix, int epsgC
     def columnsSelector = ExtractUtils.getColumnSelectorQuery(osmTableTag, tags, columnsToKeep)
     def tagsFilter = ExtractUtils.createWhereFilter(tags)
 
-    if (connection.firstRow(countTagsQuery).count <= 0) {
+    if (sql.firstRow(countTagsQuery.toString()).count <= 0) {
         warn "No keys or values found in the relations. An empty table will be returned."
-        connection.execute("""
+        sql.execute("""
             DROP TABLE IF EXISTS $outputTableName;
             CREATE TABLE $outputTableName (the_geom GEOMETRY(GEOMETRY,$epsgCode));
-        """)
+        """.toString())
         return outputTableName
     }
     debug "Build outer polygons"
@@ -362,26 +367,26 @@ def relationsAsPolygons(Connection connection, String osmTablesPrefix, int epsgC
         outer_condition = "WHERE w.id_way = br.id_way AND br.role='outer'"
         inner_condition = "WHERE w.id_way = br.id_way AND br.role='inner'"
     } else {
-        connection.execute("""
+        sql.execute("""
             DROP TABLE IF EXISTS $relationFilteredKeys;
             CREATE TABLE $relationFilteredKeys AS 
                 SELECT DISTINCT id_relation
                 FROM ${osmTablesPrefix}_relation_tag wt 
                 WHERE $tagsFilter;
             CREATE INDEX ON $relationFilteredKeys(id_relation);
-        """)
+        """.toString())
 
         if (columnsToKeep) {
-            if (connection.firstRow("""
+            if (sql.firstRow("""
                 SELECT count(*) AS count 
                 FROM $relationFilteredKeys AS a, ${osmTablesPrefix}_RELATION_TAG AS b 
                 WHERE a.ID_RELATION = b.ID_RELATION AND b.TAG_KEY IN ('${columnsToKeep.join("','")}')
-            """)[0] < 1) {
+            """.toString())[0] < 1) {
                 debug "Any columns to keep. Cannot create any geometry polygons. An empty table will be returned."
-                connection.execute("""
+                sql.execute("""
                     DROP TABLE IF EXISTS $outputTableName;
                     CREATE TABLE $outputTableName (the_geom GEOMETRY(GEOMETRY,$epsgCode));
-                """)
+                """.toString())
                 return outputTableName
             }
         }
@@ -398,7 +403,7 @@ def relationsAsPolygons(Connection connection, String osmTablesPrefix, int epsgC
         """
     }
 
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS $relationsPolygonsOuter;
         CREATE TABLE $relationsPolygonsOuter AS 
         SELECT ST_LINEMERGE(ST_ACCUM(the_geom)) as the_geom, id_relation 
@@ -415,11 +420,11 @@ def relationsAsPolygons(Connection connection, String osmTablesPrefix, int epsgC
                 FROM ${osmTablesPrefix}_way w, ${osmTablesPrefix}_way_member br $outer_condition) geom_table
                 WHERE st_numgeometries(the_geom)>=2) 
         GROUP BY id_relation;
-    """)
+    """.toString())
 
     debug "Build inner polygons"
     def relationsPolygonsInner = "RELATIONS_POLYGONS_INNER".postfix()
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS $relationsPolygonsInner;
         CREATE TABLE $relationsPolygonsInner AS 
         SELECT ST_LINEMERGE(ST_ACCUM(the_geom)) the_geom, id_relation 
@@ -436,33 +441,33 @@ def relationsAsPolygons(Connection connection, String osmTablesPrefix, int epsgC
                 FROM ${osmTablesPrefix}_way w, ${osmTablesPrefix}_way_member br ${inner_condition}) geom_table 
                 WHERE st_numgeometries(the_geom)>=2) 
         GROUP BY id_relation;
-    """)
+    """.toString())
 
     debug "Explode outer polygons"
     def relationsPolygonsOuterExploded = "RELATIONS_POLYGONS_OUTER_EXPLODED".postfix()
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS $relationsPolygonsOuterExploded;
         CREATE TABLE $relationsPolygonsOuterExploded AS 
             SELECT ST_MAKEPOLYGON(the_geom) AS the_geom, id_relation 
             FROM st_explode('$relationsPolygonsOuter') 
             WHERE ST_STARTPOINT(the_geom) = ST_ENDPOINT(the_geom)
             AND ST_NPoints(the_geom)>=4;
-    """)
+    """.toString())
 
     debug "Explode inner polygons"
     def relationsPolygonsInnerExploded = "RELATIONS_POLYGONS_INNER_EXPLODED".postfix()
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS $relationsPolygonsInnerExploded;
         CREATE TABLE $relationsPolygonsInnerExploded AS 
             SELECT the_geom AS the_geom, id_relation 
             FROM st_explode('$relationsPolygonsInner') 
             WHERE ST_STARTPOINT(the_geom) = ST_ENDPOINT(the_geom)
             AND ST_NPoints(the_geom)>=4; 
-    """)
+    """.toString())
 
     debug "Build all polygon relations"
     def relationsMpHoles = "RELATIONS_MP_HOLES".postfix()
-    connection.execute("""
+    sql.execute("""
         CREATE INDEX ON $relationsPolygonsOuterExploded USING RTREE (the_geom);
         CREATE INDEX ON $relationsPolygonsInnerExploded USING RTREE (the_geom);
         CREATE INDEX ON $relationsPolygonsOuterExploded(id_relation);
@@ -484,32 +489,32 @@ def relationsAsPolygons(Connection connection, String osmTablesPrefix, int epsgC
             ON a.id_relation=b.id_relation 
             WHERE b.id_relation IS NULL);
         CREATE INDEX ON $relationsMpHoles(id_relation);
-    """)
+    """.toString())
 
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS $outputTableName;     
         CREATE TABLE $outputTableName AS 
-            SELECT 'r'||a.id_relation AS id, a.the_geom ${ExtractUtils.createTagList(connection, columnsSelector)}
+            SELECT 'r'||a.id_relation AS id, a.the_geom ${ExtractUtils.createTagList(sql, columnsSelector)}
             FROM $relationsMpHoles AS a, ${osmTablesPrefix}_relation_tag  b 
             WHERE a.id_relation=b.id_relation 
             GROUP BY a.the_geom, a.id_relation;
-    """)
+    """.toString())
 
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS    $relationsPolygonsOuter, 
                                 $relationsPolygonsInner,
                                 $relationsPolygonsOuterExploded, 
                                 $relationsPolygonsInnerExploded, 
                                 $relationsMpHoles, 
                                 $relationFilteredKeys;
-    """)
+    """.toString())
     outputTableName
 }
 
 /**
  * This process is used to extract ways as lines
  *
- * @param connection a connection to a database
+ * @param sql a connection to a database
  * @param osmTablesPrefix prefix name for OSM tables
  * @param epsgCode EPSG code to reproject the geometries
  * @param tags list of keys and values to be filtered
@@ -521,8 +526,8 @@ def relationsAsPolygons(Connection connection, String osmTablesPrefix, int epsgC
  * @author Erwan Bocher (CNRS LAB-STICC)
  * @author Elisabeth Lesaux (UBS LAB-STICC)
  */
-def waysAsLines(Connection connection, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
-    if (!connection) {
+def waysAsLines(Sql sql, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
+    if (!sql) {
         error "Invalid database connection"
         return
     }
@@ -542,12 +547,12 @@ def waysAsLines(Connection connection, String osmTablesPrefix, int epsgCode = 43
     def columnsSelector = ExtractUtils.getColumnSelectorQuery(osmTableTag, tags, columnsToKeep)
     def tagsFilter = ExtractUtils.createWhereFilter(tags)
 
-    if (connection.firstRow(countTagsQuery.toString()).count <= 0) {
+    if (sql.firstRow(countTagsQuery.toString()).count <= 0) {
         debug "No keys or values found in the ways. An empty table will be returned."
-        connection.execute(""" 
+        sql.execute(""" 
             DROP TABLE IF EXISTS $outputTableName;
             CREATE TABLE $outputTableName (the_geom GEOMETRY(GEOMETRY,$epsgCode));
-        """)
+        """.toString())
         return outputTableName
     }
     debug "Build ways as lines"
@@ -556,33 +561,33 @@ def waysAsLines(Connection connection, String osmTablesPrefix, int epsgCode = 43
     if (!tagsFilter) {
         idWaysTable = "way_tag".prefix(osmTablesPrefix)
     } else {
-        connection.execute("""
+        sql.execute("""
             DROP TABLE IF EXISTS $idWaysTable;
             CREATE TABLE $idWaysTable AS
                 SELECT DISTINCT id_way
                 FROM ${osmTablesPrefix}_way_tag
                 WHERE $tagsFilter;
             CREATE INDEX ON $idWaysTable(id_way);
-        """)
+        """.toString())
     }
 
     if (columnsToKeep) {
-        if (connection.firstRow("""
+        if (sql.firstRow("""
             SELECT count(*) AS count 
             FROM $idWaysTable AS a, ${osmTablesPrefix}_WAY_TAG AS b 
             WHERE a.ID_WAY = b.ID_WAY AND b.TAG_KEY IN ('${columnsToKeep.join("','")}')
-        """)[0] < 1) {
+        """.toString())[0] < 1) {
             debug "Any columns to keep. Cannot create any geometry lines. An empty table will be returned."
-            connection.execute("""
+            sql.execute("""
                 DROP TABLE IF EXISTS $outputTableName;
                 CREATE TABLE $outputTableName (the_geom GEOMETRY(GEOMETRY,$epsgCode));
-            """)
+            """.toString())
             outputTableName
         }
     }
 
 
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS $waysLinesTmp; 
         CREATE TABLE  $waysLinesTmp AS 
             SELECT id_way,ST_TRANSFORM(ST_SETSRID(ST_MAKELINE(THE_GEOM), 4326), $epsgCode) the_geom 
@@ -600,24 +605,24 @@ def waysAsLines(Connection connection, String osmTablesPrefix, int epsgCode = 43
                 WHERE w.id_way = b.id_way) geom_table 
             WHERE ST_NUMGEOMETRIES(the_geom) >= 2;
         CREATE INDEX ON $waysLinesTmp(ID_WAY);
-    """)
+    """.toString())
 
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS $outputTableName;
         CREATE TABLE $outputTableName AS 
-            SELECT 'w'||a.id_way AS id, a.the_geom ${ExtractUtils.createTagList(connection, columnsSelector)} 
+            SELECT 'w'||a.id_way AS id, a.the_geom ${ExtractUtils.createTagList(sql, columnsSelector)} 
             FROM $waysLinesTmp AS a, ${osmTablesPrefix}_way_tag b 
             WHERE a.id_way=b.id_way 
             GROUP BY a.id_way;
         DROP TABLE IF EXISTS $waysLinesTmp, $idWaysTable;
-    """)
+    """.toString())
     outputTableName
 }
 
 /**
  * This process is used to extract relations as lines
  *
- * @param connection a connection to a database
+ * @param sql a connection to a database
  * @param osmTablesPrefix prefix name for OSM tables
  * @param epsgCode EPSG code to reproject the geometries
  * @param tags list of keys and values to be filtered
@@ -629,8 +634,8 @@ def waysAsLines(Connection connection, String osmTablesPrefix, int epsgCode = 43
  * @author Erwan Bocher (CNRS LAB-STICC)
  * @author Elisabeth Lesaux (UBS LAB-STICC)
  */
-def relationsAsLines(Connection connection, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
-    if (!connection) {
+def relationsAsLines(Sql sql, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
+    if (!sql) {
         error "Invalid database connection"
         return
     }
@@ -649,12 +654,12 @@ def relationsAsLines(Connection connection, String osmTablesPrefix, int epsgCode
     def columnsSelector = ExtractUtils.getColumnSelectorQuery(osmTableTag, tags, columnsToKeep)
     def tagsFilter = ExtractUtils.createWhereFilter(tags)
 
-    if (connection.firstRow(countTagsQuery).count <= 0) {
+    if (sql.firstRow(countTagsQuery.toString()).count <= 0) {
         warn "No keys or values found in the relations. An empty table will be returned."
-        connection.execute("""
+        sql.execute("""
             DROP TABLE IF EXISTS $outputTableName;
             CREATE TABLE $outputTableName (the_geom GEOMETRY(GEOMETRY,$epsgCode));
-        """)
+        """.toString())
         return outputTableName
     }
     def relationsLinesTmp = "RELATIONS_LINES_TMP".postfix()
@@ -663,32 +668,32 @@ def relationsAsLines(Connection connection, String osmTablesPrefix, int epsgCode
     if (!tagsFilter) {
         relationsFilteredKeys = "relation".prefix(osmTablesPrefix)
     } else {
-        connection.execute("""
+        sql.execute("""
             DROP TABLE IF EXISTS $relationsFilteredKeys;
             CREATE TABLE $relationsFilteredKeys AS
                 SELECT DISTINCT id_relation
                 FROM ${osmTablesPrefix}_relation_tag wt
                 WHERE $tagsFilter;
             CREATE INDEX ON $relationsFilteredKeys(id_relation);
-        """)
+        """.toString())
     }
 
     if (columnsToKeep) {
-        if (connection.firstRow("""
+        if (sql.firstRow("""
             SELECT count(*) AS count 
             FROM $relationsFilteredKeys AS a, ${osmTablesPrefix}_RELATION_TAG AS b 
             WHERE a.ID_RELATION = b.ID_RELATION AND b.TAG_KEY IN ('${columnsToKeep.join("','")}')
-        """)[0] < 1) {
+        """.toString())[0] < 1) {
             debug "Any columns to keep. Cannot create any geometry lines. An empty table will be returned."
-            connection.execute(""" 
+            sql.execute(""" 
                 DROP TABLE IF EXISTS $outputTableName;
                 CREATE TABLE $outputTableName (the_geom GEOMETRY(GEOMETRY,$epsgCode));
-            """)
+            """.toString())
             return outputTableName
         }
     }
 
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS $relationsLinesTmp;
         CREATE TABLE $relationsLinesTmp AS
             SELECT ST_ACCUM(THE_GEOM) AS the_geom, id_relation
@@ -713,24 +718,24 @@ def relationsAsLines(Connection connection, String osmTablesPrefix, int epsgCode
                 WHERE st_numgeometries(the_geom)>=2)
             GROUP BY id_relation;
         CREATE INDEX ON $relationsLinesTmp(id_relation);
-    """)
+    """.toString())
 
-    connection.execute("""
+    sql.execute("""
         DROP TABLE IF EXISTS $outputTableName;
         CREATE TABLE $outputTableName AS
-            SELECT 'r'||a.id_relation AS id, a.the_geom ${ExtractUtils.createTagList(connection, columnsSelector)}
+            SELECT 'r'||a.id_relation AS id, a.the_geom ${ExtractUtils.createTagList(sql, columnsSelector)}
             FROM $relationsLinesTmp AS a, ${osmTablesPrefix}_relation_tag  b
             WHERE a.id_relation=b.id_relation
             GROUP BY a.id_relation;
         DROP TABLE IF EXISTS $relationsLinesTmp, $relationsFilteredKeys;
-    """)
+    """.toString())
     outputTableName
 }
 
 /**
  * This function is used to extract nodes as points
  *
- * @param datasource a connection to a database
+ * @param sql a connection to a database
  * @param osmTablesPrefix prefix name for OSM tables
  * @param epsgCode EPSG code to reproject the geometries
  * @param outputNodesPoints the name of the nodes points table
@@ -743,9 +748,9 @@ def relationsAsLines(Connection connection, String osmTablesPrefix, int epsgCode
  * @author Erwan Bocher (CNRS LAB-STICC)
  * @author Elisabeth Lesaux (UBS LAB-STICC)
  */
-def nodesAsPoints(Connection connection, String osmTablesPrefix, String outputNodesPoints,
+def nodesAsPoints(Sql sql, String osmTablesPrefix, String outputNodesPoints,
                                     int epsgCode = 4326, def tags, def columnsToKeep) {
-    if(!connection){
+    if(!sql){
         error("Invalid database connection.")
         return
     }
@@ -768,46 +773,46 @@ def nodesAsPoints(Connection connection, String osmTablesPrefix, String outputNo
     def columnsSelector = ExtractUtils.getColumnSelectorQuery(tableNodeTag, tags, columnsToKeep)
     def tagsFilter = ExtractUtils.createWhereFilter(tags)
 
-    if (connection.firstRow(countTagsQuery).count <= 0) {
+    if (sql.firstRow(countTagsQuery.toString()).count <= 0) {
         debug "No keys or values found in the nodes. An empty table will be returned."
-        connection.execute """
+        sql.execute """
                 DROP TABLE IF EXISTS $outputNodesPoints;
                 CREATE TABLE $outputNodesPoints (the_geom GEOMETRY(POINT,4326));
-        """
+        """.toString()
         return
     }
     debug "Build nodes as points"
-    def tagList = ExtractUtils.createTagList connection, columnsSelector
+    def tagList = ExtractUtils.createTagList sql, columnsSelector
     if (tagsFilter.isEmpty()) {
         if (columnsToKeep) {
-            if (connection.firstRow("select count(*) as count from $tableNodeTag where TAG_KEY in ('${columnsToKeep.join("','")}')")[0] < 1) {
-                connection.execute """
+            if (sql.firstRow("select count(*) as count from $tableNodeTag where TAG_KEY in ('${columnsToKeep.join("','")}')".toString())[0] < 1) {
+                sql.execute """
                         DROP TABLE IF EXISTS $outputNodesPoints;
                         CREATE TABLE $outputNodesPoints (the_geom GEOMETRY(POINT,4326));
-                """
+                """.toString()
                 return outputNodesPoints
             }
         }
-        connection.execute """
+        sql.execute """
             DROP TABLE IF EXISTS $outputNodesPoints;
             CREATE TABLE $outputNodesPoints AS
                 SELECT a.id_node,ST_TRANSFORM(ST_SETSRID(a.THE_GEOM, 4326), $epsgCode) AS the_geom $tagList
                 FROM $tableNode AS a, $tableNodeTag b
                 WHERE a.id_node = b.id_node GROUP BY a.id_node;
-        """
+        """.toString()
 
     } else {
         if(columnsToKeep){
-            if(connection.firstRow("select count(*) as count from $tableNodeTag where TAG_KEY in ('${columnsToKeep.join("','")}')")[0]<1){
-                connection.execute """
+            if(sql.firstRow("select count(*) as count from $tableNodeTag where TAG_KEY in ('${columnsToKeep.join("','")}')".toString())[0]<1){
+                sql.execute """
                         DROP TABLE IF EXISTS $outputNodesPoints;
                         CREATE TABLE $outputNodesPoints (the_geom GEOMETRY(POINT,4326));
-                """
+                """.toString()
                 return outputNodesPoints
             }
         }
         def filteredNodes = "FILTERED_NODES".postfix()
-        connection.execute """
+        sql.execute """
             CREATE TABLE $filteredNodes AS
                 SELECT DISTINCT id_node FROM ${osmTablesPrefix}_node_tag WHERE $tagsFilter;
             CREATE INDEX ON $filteredNodes(id_node);
@@ -818,7 +823,7 @@ def nodesAsPoints(Connection connection, String osmTablesPrefix, String outputNo
                 WHERE a.id_node=b.id_node
                 AND a.id_node=c.id_node
                 GROUP BY a.id_node;
-        """
+        """.toString()
     }
     return outputNodesPoints
 }

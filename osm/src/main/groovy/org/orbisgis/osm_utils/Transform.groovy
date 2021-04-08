@@ -36,9 +36,9 @@
  */
 package org.orbisgis.osm_utils
 
+import groovy.sql.Sql
 import org.orbisgis.osm_utils.utils.TransformUtils
 
-import java.sql.Connection
 
 /**
  * Groovy script containing methods used to extracts points, lines and polygons from OSM tables.
@@ -51,7 +51,7 @@ import java.sql.Connection
 /**
  * Extracts all the points from the OSM tables into a single table.
  *
- * @param connection      Connection to the database containing the OSM data. (Mandatory)
+ * @param connection      Groovy SQL object to manage the database containing the OSM data. (Mandatory)
  * @param osmTablesPrefix Prefix name for OSM tables. (Mandatory)
  * @param epsgCode        EPSG code used to reproject the geometries. (Optional, default = 4326)
  * @param tags            List of OSM tags used to filter the nodes to keep.
@@ -59,9 +59,9 @@ import java.sql.Connection
  *
  * @return outputTableName Name of the result table which contains all the extracted nodes.
  */
-def toPoints(Connection connection, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
+def toPoints(Sql sql, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
     //Check the mandatory inputs
-    if (!connection) {
+    if (!sql.connection) {
         error "Invalid database connection."
         return
     }
@@ -77,8 +77,8 @@ def toPoints(Connection connection, String osmTablesPrefix, int epsgCode = 4326,
     def outputTableName = "OSM_POINTS".postfix()
     info "Start points transformation"
     debug "Indexing osm tables..."
-    TransformUtils.buildIndexes(connection, osmTablesPrefix)
-    def pointsNodes = OSMTools.Extract.nodesAsPoints(connection, osmTablesPrefix, outputTableName, epsgCode, tags, columnsToKeep)
+    TransformUtils.buildIndexes(sql, osmTablesPrefix)
+    def pointsNodes = OSMTools.Extract.nodesAsPoints(sql, osmTablesPrefix, outputTableName, epsgCode, tags, columnsToKeep)
     if (pointsNodes) {
         info "The points have been built."
     } else {
@@ -91,7 +91,7 @@ def toPoints(Connection connection, String osmTablesPrefix, int epsgCode = 4326,
 /**
  * Extracts all the lines from the OSM tables into a single table.
  *
- * @param connection      Connection to the database containing the OSM data. (Mandatory)
+ * @param sql      Connection to the database containing the OSM data. (Mandatory)
  * @param osmTablesPrefix Prefix name for OSM tables. (Mandatory)
  * @param epsgCode        EPSG code used to reproject the geometries. (Optional)
  * @param tags            List of OSM tags used to filter the lines to keep.
@@ -99,8 +99,8 @@ def toPoints(Connection connection, String osmTablesPrefix, int epsgCode = 4326,
  *
  * @return outputTableName Name of the result table which contains all the extracted lines.
  */
-def toLines(Connection connection, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
-    return TransformUtils.toPolygonOrLine(TransformUtils.LINES, connection, osmTablesPrefix, epsgCode, tags, columnsToKeep)
+def toLines(Sql sql, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
+    return TransformUtils.toPolygonOrLine(TransformUtils.LINES, sql, osmTablesPrefix, epsgCode, tags, columnsToKeep)
 }
 
 /**
@@ -114,6 +114,6 @@ def toLines(Connection connection, String osmTablesPrefix, int epsgCode = 4326, 
  *
  * @return outputTableName Name of the result table which contains all the extracted polygon.
  */
-def toPolygons(Connection connection, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
-    return TransformUtils.toPolygonOrLine(TransformUtils.POLYGONS, connection, osmTablesPrefix, epsgCode, tags, columnsToKeep)
+def toPolygons(Sql sql, String osmTablesPrefix, int epsgCode = 4326, def tags, def columnsToKeep) {
+    return TransformUtils.toPolygonOrLine(TransformUtils.POLYGONS, sql, osmTablesPrefix, epsgCode, tags, columnsToKeep)
 }

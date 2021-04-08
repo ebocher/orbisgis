@@ -15,7 +15,7 @@
  *
  * OSM is distributed under LGPL 3 license.
  *
- * Copyright (C) 2019 CNRS (Lab-STICC UMR CNRS 6285)
+ * Copyright (C) 2019 -2021 CNRS (Lab-STICC UMR CNRS 6285)
  *
  *
  * OSM is free software: you can redistribute it and/or modify it under the
@@ -36,7 +36,8 @@
  */
 package org.orbisgis.osm_utils.utils
 
-import java.sql.Connection
+import groovy.sql.Sql
+
 
 /**
  * Script containing utility methods for the {@link org.orbisgis.osm_utils.Extract} script to keep only
@@ -160,12 +161,12 @@ static def createWhereFilter(def tags){
  *
  * @return The SQL case when expression.
  */
-static def createTagList(Connection connection, def selectTableQuery){
-    if (!connection) {
+static def createTagList(Sql sql, def selectTableQuery){
+    if (!sql) {
         error "Invalid database connection"
         return
     }
-    def rowskeys = connection.rows(selectTableQuery)
+    def rowskeys = sql.rows(selectTableQuery.toString())
     def list = []
     rowskeys.tag_key
             .findAll {it != null}

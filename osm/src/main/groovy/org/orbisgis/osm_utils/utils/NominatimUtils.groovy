@@ -38,8 +38,10 @@ package org.orbisgis.osm_utils.utils
 
 import groovy.json.JsonSlurper
 import groovy.transform.Field
-import org.locationtech.jts.geom.Envelope
+import org.locationtech.jts.geom.Coordinate
 import org.locationtech.jts.geom.Geometry
+import org.locationtech.jts.geom.GeometryFactory
+import org.locationtech.jts.geom.LinearRing
 import org.locationtech.jts.geom.MultiPolygon
 import org.locationtech.jts.geom.Polygon
 
@@ -143,13 +145,18 @@ static Geometry getArea(String placeName) {
         return
     }
 
+    GeometryFactory geometryFactory = new GeometryFactory()
+
     def area = null
     jsonRoot.features.find() { feature ->
         if (feature.geometry != null) {
             if (feature.geometry.type.equalsIgnoreCase("polygon")) {
-                area = feature.geometry.coordinates as Polygon
+                area = parsePolygon(feature.geometry.coordinates, geometryFactory)
             } else if (feature.geometry.type.equalsIgnoreCase("multipolygon")) {
-                area = feature.geometry.coordinates.collect { it as Polygon }.toArray() as MultiPolygon
+                def mp = feature.geometry.coordinates.collect { it ->
+                    parsePolygon(it, geometryFactory)
+                }.toArray(new Polygon[0])
+                area = geometryFactory.createMultiPolygon(mp)
             } else {
                 return
             }
@@ -190,4 +197,60 @@ static Geometry geometryFromNominatim(Collection<Float> bbox) {
         return OverpassUtils.buildGeometry([bbox[1], bbox[0], bbox[3], bbox[2]]);
     }
     error("The bbox must be defined with 4 values")
+}
+
+
+/**
+ * Parse geojson coordinates to create a polygon.
+ *
+ * @author Erwan Bocher (CNRS LAB-STICC)
+ * @author Elisabeth Le Saux (UBS LAB-STICC)
+ *
+ * @param coordinates Coordinates to parse.
+ * @param geometryFactory Geometry factory used for the geometry creation.
+ *
+ * @return A polygon.
+ */
+static Polygon parsePolygon(def coordinates, GeometryFactory geometryFactory) {
+    if (!coordinates in Collection || !coordinates ||
+            !coordinates[0] in Collection || !coordinates[0] ||
+            !coordinates[0][0] in Collection || !coordinates[0][0]) {
+        error "The given coordinate should be an array of an array of an array of coordinates (3D array)."
+        return null
+    }
+    def ring
+    try {
+        ring = geometryFactory.createLinearRing(arrayToCoordinate(coordinates[0]))
+    }
+    catch (IllegalArgumentException e) {
+        error e.getMessage()
+        return null
+    }
+    if (coordinates.size == 1) {
+        return geometryFactory.createPolygon(ring)
+    } else {
+        def holes = coordinates[1..coordinates.size - 1].collect { it ->
+            geometryFactory.createLinearRing(arrayToCoordinate(it))
+        }.toArray(new LinearRing[0])
+        return geometryFactory.createPolygon(ring, holes)
+    }
+}
+
+/**
+ * Convert and array of numeric coordinates into of an array of {@link Coordinate}.
+ *
+ * @param coordinates Array of array of numeric value (array of numeric coordinates)
+ *
+ * @return Array of {@link Coordinate}.
+ */
+static Coordinate[] arrayToCoordinate(def coordinates) {
+    coordinates.collect { it ->
+        if (it.size == 2) {
+            def (x, y) = it
+            new Coordinate(x, y)
+        } else if (it.size == 3) {
+            def (x, y, z) = it
+            new Coordinate(x, y, z)
+        }
+    }.findAll { it != null }.toArray(new Coordinate[0])
 }

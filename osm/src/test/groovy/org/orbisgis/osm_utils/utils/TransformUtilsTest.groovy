@@ -36,6 +36,7 @@
  */
 package org.orbisgis.osm_utils.utils
 
+import groovy.sql.Sql
 import org.h2gis.functions.factory.H2GISDBFactory
 import org.h2gis.utilities.JDBCUtilities
 import org.h2gis.utilities.TableLocation
@@ -61,17 +62,17 @@ import static org.junit.jupiter.api.Assertions.*
 class TransformUtilsTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransformUtilsTest)
-    private static Connection connection
+    private static Sql sql
     private static String DB_NAME
 
     @BeforeAll
     static void beforeAll() {
         DB_NAME = (this.simpleName.postfix()).toUpperCase()
-        connection = H2GISDBFactory.createSpatialDataBase("./target/" + DB_NAME)
+        sql = new Sql(H2GISDBFactory.createSpatialDataBase("./target/" + DB_NAME))
     }
 
     /**
-     * Test the {@link org.orbisgis.osm_utils.utils.TransformUtils#buildIndexes(java.sql.Connection, java.lang.String)}
+     * Test the {@link org.orbisgis.osm_utils.utils.TransformUtils#buildIndexes(Sql, java.lang.String)}
      * method with bad data.
      */
     @Test
@@ -79,7 +80,7 @@ class TransformUtilsTest {
         def osmTable = "toto"
 
         LOGGER.warn("An error will be thrown next")
-        assertFalse TransformUtils.buildIndexes(connection, null)
+        assertFalse TransformUtils.buildIndexes(sql, null)
         LOGGER.warn("An error will be thrown next")
         assertFalse TransformUtils.buildIndexes(null, null)
         LOGGER.warn("An error will be thrown next")
@@ -87,13 +88,13 @@ class TransformUtilsTest {
     }
 
     /**
-     * Test the {@link org.orbisgis.osm_utils.utils.TransformUtils#buildIndexes(java.sql.Connection, java.lang.String)}
+     * Test the {@link org.orbisgis.osm_utils.utils.TransformUtils#buildIndexes(Sql, java.lang.String)}
      * method.
      */
     @Test
     void buildIndexesTest(){
         def osmTablesPrefix = "toto"
-        connection.execute """
+        sql.execute """
             CREATE TABLE ${osmTablesPrefix}_node(id_node varchar);
             CREATE TABLE ${osmTablesPrefix}_way_node(id_node varchar, node_order varchar, id_way varchar);
             CREATE TABLE ${osmTablesPrefix}_way(id_way varchar, not_taken_into_account varchar);
@@ -103,71 +104,71 @@ class TransformUtilsTest {
             CREATE TABLE ${osmTablesPrefix}_way_member(id_relation varchar);
             CREATE TABLE ${osmTablesPrefix}_way_not_taken_into_account(id_way varchar);
             CREATE TABLE ${osmTablesPrefix}_relation_not_taken_into_account(id_relation varchar);
-        """
+        """.toString()
 
-        TransformUtils.buildIndexes(connection, osmTablesPrefix)
+        TransformUtils.buildIndexes(sql, osmTablesPrefix)
         def loc = TableLocation.parse("${osmTablesPrefix}_node", DBTypes.H2)
-        assert JDBCUtilities.tableExists(connection, loc)
-        assert JDBCUtilities.getColumnNames(connection, loc.toString()).contains("ID_NODE")
-        assert JDBCUtilities.isIndexed(connection, loc, "ID_NODE")
+        assert JDBCUtilities.tableExists(sql.connection, loc)
+        assert JDBCUtilities.getColumnNames(sql.connection, loc.toString()).contains("ID_NODE")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "ID_NODE")
 
         loc = TableLocation.parse("${osmTablesPrefix}_way_node",DBTypes.H2)
-        assert JDBCUtilities.tableExists(connection, loc)
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_NODE")
-        assert JDBCUtilities.isIndexed(connection, loc, "ID_NODE")
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("NODE_ORDER")
-        assert JDBCUtilities.isIndexed(connection, loc, "NODE_ORDER")
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_WAY")
-        assert JDBCUtilities.isIndexed(connection, loc, "ID_WAY")
+        assert JDBCUtilities.tableExists(sql.connection, loc)
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("ID_NODE")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "ID_NODE")
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("NODE_ORDER")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "NODE_ORDER")
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("ID_WAY")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "ID_WAY")
 
         loc = TableLocation.parse("${osmTablesPrefix}_way", DBTypes.H2)
-        assert JDBCUtilities.tableExists(connection, loc)
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_WAY")
-        assert JDBCUtilities.isIndexed(connection, loc, "ID_WAY")
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("NOT_TAKEN_INTO_ACCOUNT")
-        assert !JDBCUtilities.isIndexed(connection, loc, "NOT_TAKEN_INTO_ACCOUNT")
+        assert JDBCUtilities.tableExists(sql.connection, loc)
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("ID_WAY")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "ID_WAY")
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("NOT_TAKEN_INTO_ACCOUNT")
+        assert !JDBCUtilities.isIndexed(sql.connection, loc, "NOT_TAKEN_INTO_ACCOUNT")
 
         loc = TableLocation.parse("${osmTablesPrefix}_way_tag", DBTypes.H2)
-        assert JDBCUtilities.tableExists(connection, loc)
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("TAG_KEY")
-        assert JDBCUtilities.isIndexed(connection, loc, "TAG_KEY")
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_WAY")
-        assert JDBCUtilities.isIndexed(connection, loc, "ID_WAY")
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("TAG_VALUE")
-        assert JDBCUtilities.isIndexed(connection, loc, "TAG_VALUE")
+        assert JDBCUtilities.tableExists(sql.connection, loc)
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("TAG_KEY")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "TAG_KEY")
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("ID_WAY")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "ID_WAY")
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("TAG_VALUE")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "TAG_VALUE")
 
         loc = TableLocation.parse("${osmTablesPrefix}_relation_tag", DBTypes.H2)
-        assert JDBCUtilities.tableExists(connection, loc)
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("TAG_KEY")
-        assert JDBCUtilities.isIndexed(connection, loc, "TAG_KEY")
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_RELATION")
-        assert JDBCUtilities.isIndexed(connection, loc, "ID_RELATION")
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("TAG_VALUE")
-        assert JDBCUtilities.isIndexed(connection, loc, "TAG_VALUE")
+        assert JDBCUtilities.tableExists(sql.connection, loc)
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("TAG_KEY")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "TAG_KEY")
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("ID_RELATION")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "ID_RELATION")
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("TAG_VALUE")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "TAG_VALUE")
 
         loc = TableLocation.parse("${osmTablesPrefix}_relation", DBTypes.H2)
-        assert JDBCUtilities.tableExists(connection, loc)
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_RELATION")
-        assert JDBCUtilities.isIndexed(connection, loc, "ID_RELATION")
+        assert JDBCUtilities.tableExists(sql.connection, loc)
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("ID_RELATION")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "ID_RELATION")
 
         loc = TableLocation.parse("${osmTablesPrefix}_way_member", DBTypes.H2)
-        assert JDBCUtilities.tableExists(connection, loc)
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_RELATION")
-        assert JDBCUtilities.isIndexed(connection, loc, "ID_RELATION")
+        assert JDBCUtilities.tableExists(sql.connection, loc)
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("ID_RELATION")
+        assert JDBCUtilities.isIndexed(sql.connection, loc, "ID_RELATION")
 
         loc = TableLocation.parse("${osmTablesPrefix}_way_not_taken_into_account", DBTypes.H2)
-        assert JDBCUtilities.tableExists(connection, loc)
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_WAY")
-        assert !JDBCUtilities.isIndexed(connection, loc, "ID_WAY")
+        assert JDBCUtilities.tableExists(sql.connection, loc)
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("ID_WAY")
+        assert !JDBCUtilities.isIndexed(sql.connection, loc, "ID_WAY")
 
         loc = TableLocation.parse("${osmTablesPrefix}_relation_not_taken_into_account", DBTypes.H2)
-        assert JDBCUtilities.tableExists(connection, loc)
-        assert JDBCUtilities.getColumnNames(connection, loc).contains("ID_RELATION")
-        assert !JDBCUtilities.isIndexed(connection, loc, "ID_RELATION")
+        assert JDBCUtilities.tableExists(sql.connection, loc)
+        assert JDBCUtilities.getColumnNames(sql.connection, loc).contains("ID_RELATION")
+        assert !JDBCUtilities.isIndexed(sql.connection, loc, "ID_RELATION")
     }
 
     /**
-     * test the {@link org.orbisgis.osm_utils.utils.TransformUtils#toPolygonOrLine(java.lang.String, java.sql.Connection, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)}
+     * test the {@link org.orbisgis.osm_utils.utils.TransformUtils#toPolygonOrLine(java.lang.String, Sql, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)}
      * method with bad data.
      */
     @Test
@@ -179,16 +180,16 @@ class TransformUtilsTest {
         def tags = [:]
         def columnsToKeep = []
 
-        assert !TransformUtils.toPolygonOrLine(null, connection, prefix, epsgCode, tags, columnsToKeep)
+        assert !TransformUtils.toPolygonOrLine(null, sql, prefix, epsgCode, tags, columnsToKeep)
         assert !TransformUtils.toPolygonOrLine(lineType, null, prefix, epsgCode, tags, columnsToKeep)
-        assert !TransformUtils.toPolygonOrLine(lineType, connection, null, epsgCode, tags, columnsToKeep)
-        assert !TransformUtils.toPolygonOrLine(lineType, connection, prefix, badEpsgCode, tags, columnsToKeep)
-        assert !TransformUtils.toPolygonOrLine(lineType, connection, prefix, null, tags, columnsToKeep)
-        assert !TransformUtils.toPolygonOrLine(lineType, connection, prefix, epsgCode, null, null)
+        assert !TransformUtils.toPolygonOrLine(lineType, sql, null, epsgCode, tags, columnsToKeep)
+        assert !TransformUtils.toPolygonOrLine(lineType, sql, prefix, badEpsgCode, tags, columnsToKeep)
+        assert !TransformUtils.toPolygonOrLine(lineType, sql, prefix, null, tags, columnsToKeep)
+        assert !TransformUtils.toPolygonOrLine(lineType, sql, prefix, epsgCode, null, null)
     }
 
     /**
-     * test the {@link org.orbisgis.osm_utils.utils.TransformUtils#toPolygonOrLine(java.lang.String, java.sql.Connection, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)}
+     * test the {@link org.orbisgis.osm_utils.utils.TransformUtils#toPolygonOrLine(java.lang.String,Sql, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)}
      * method.
      */
     @Test
@@ -201,14 +202,14 @@ class TransformUtilsTest {
         def columnsToKeep = ["water"]
 
         //Load data
-        createData(connection, prefix)
+        createData(sql, prefix)
 
         //Test line
-        def result = TransformUtils.toPolygonOrLine(lineType, connection, prefix, epsgCode, tags, columnsToKeep)
+        def result = TransformUtils.toPolygonOrLine(lineType, sql, prefix, epsgCode, tags, columnsToKeep)
         assert result
         def loc = TableLocation.parse(result, DBTypes.H2)
-        assert 2 == JDBCUtilities.getRowCount(connection, loc)
-        def rows = connection.rows("SELECT * FROM ${loc.toString()}")
+        assert 2 == JDBCUtilities.getRowCount(sql.connection, loc)
+        def rows = sql.rows("SELECT * FROM ${loc.toString()}".toString())
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 0:
@@ -227,11 +228,11 @@ class TransformUtilsTest {
         }
 
         //Test polygon
-        result = TransformUtils.toPolygonOrLine(polygonType, connection, prefix, epsgCode, tags, columnsToKeep)
+        result = TransformUtils.toPolygonOrLine(polygonType, sql, prefix, epsgCode, tags, columnsToKeep)
         assert result
         loc = TableLocation.parse(result, DBTypes.H2)
-        assert 2 == JDBCUtilities.getRowCount(connection, loc)
-        rows = connection.rows("SELECT * FROM ${loc.toString()}")
+        assert 2 == JDBCUtilities.getRowCount(sql.connection, loc)
+        rows = sql.rows("SELECT * FROM ${loc.toString()}".toString())
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 1:
@@ -250,13 +251,13 @@ class TransformUtilsTest {
         }
 
         //Test no way tags
-        connection.execute "DROP TABLE ${prefix}_way_tag"
-        connection.execute "CREATE TABLE ${prefix}_way_tag (id_way int, tag_key varchar, tag_value varchar)"
-        result = TransformUtils.toPolygonOrLine(polygonType, connection, prefix, epsgCode, tags, columnsToKeep)
+        sql.execute "DROP TABLE ${prefix}_way_tag".toString()
+        sql.execute "CREATE TABLE ${prefix}_way_tag (id_way int, tag_key varchar, tag_value varchar)".toString()
+        result = TransformUtils.toPolygonOrLine(polygonType, sql, prefix, epsgCode, tags, columnsToKeep)
         assert result
         loc = TableLocation.parse(result, DBTypes.H2)
-        assert 1 == JDBCUtilities.getRowCount(connection, loc)
-        rows = connection.rows("SELECT * FROM ${loc.toString()}")
+        assert 1 == JDBCUtilities.getRowCount(sql.connection, loc)
+        rows = sql.rows("SELECT * FROM ${loc.toString()}".toString())
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 1:
@@ -267,11 +268,11 @@ class TransformUtilsTest {
                     break
             }
         }
-        result = TransformUtils.toPolygonOrLine(lineType, connection, prefix, epsgCode, tags, columnsToKeep)
+        result = TransformUtils.toPolygonOrLine(lineType, sql, prefix, epsgCode, tags, columnsToKeep)
         assert result
         loc = TableLocation.parse(result, DBTypes.H2)
-        assert 1 == JDBCUtilities.getRowCount(connection, loc)
-        rows = connection.rows("SELECT * FROM ${loc.toString()}")
+        assert 1 == JDBCUtilities.getRowCount(sql.connection, loc)
+        rows = sql.rows("SELECT * FROM ${loc.toString()}".toString())
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 1:
@@ -284,18 +285,18 @@ class TransformUtilsTest {
         }
 
         //Test no relation tags
-        connection.execute "DROP TABLE ${prefix}_way_tag"
-        connection.execute "CREATE TABLE ${prefix}_way_tag (id_way int, tag_key varchar, tag_value varchar)"
-        connection.execute "INSERT INTO ${prefix}_way_tag VALUES(1, 'building', 'house')"
-        connection.execute "INSERT INTO ${prefix}_way_tag VALUES(1, 'material', 'concrete')"
-        connection.execute "INSERT INTO ${prefix}_way_tag VALUES(1, 'water', 'lake')"
-        connection.execute "DROP TABLE ${prefix}_relation_tag"
-        connection.execute "CREATE TABLE ${prefix}_relation_tag (id_relation int, tag_key varchar, tag_value varchar)"
-        result = TransformUtils.toPolygonOrLine(polygonType, connection, prefix, epsgCode, tags, columnsToKeep)
+        sql.execute """DROP TABLE ${prefix}_way_tag;
+        CREATE TABLE ${prefix}_way_tag (id_way int, tag_key varchar, tag_value varchar);
+        INSERT INTO ${prefix}_way_tag VALUES(1, 'building', 'house');
+        INSERT INTO ${prefix}_way_tag VALUES(1, 'material', 'concrete');
+        INSERT INTO ${prefix}_way_tag VALUES(1, 'water', 'lake');
+        DROP TABLE ${prefix}_relation_tag;
+        CREATE TABLE ${prefix}_relation_tag (id_relation int, tag_key varchar, tag_value varchar);""".toString()
+        result = TransformUtils.toPolygonOrLine(polygonType, sql, prefix, epsgCode, tags, columnsToKeep)
         assert result
         loc = TableLocation.parse(result, DBTypes.H2)
-        assert 1 == JDBCUtilities.getRowCount(connection, loc)
-        rows = connection.rows("SELECT * FROM ${loc.toString()}")
+        assert 1 == JDBCUtilities.getRowCount(sql.connection, loc)
+        rows = sql.rows("SELECT * FROM ${loc.toString()}".toString())
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 1:
@@ -306,11 +307,11 @@ class TransformUtilsTest {
                     break
             }
         }
-        result = TransformUtils.toPolygonOrLine(lineType, connection, prefix, epsgCode, tags, columnsToKeep)
+        result = TransformUtils.toPolygonOrLine(lineType, sql, prefix, epsgCode, tags, columnsToKeep)
         assert result
         loc = TableLocation.parse(result, DBTypes.H2)
-        assert 1 == JDBCUtilities.getRowCount(connection, loc)
-        rows = connection.rows("SELECT * FROM ${loc.toString()}")
+        assert 1 == JDBCUtilities.getRowCount(sql.connection, loc)
+        rows = sql.rows("SELECT * FROM ${loc.toString()}".toString())
         rows.eachWithIndex { it, i ->
             switch(i){
                 case 1:
@@ -323,63 +324,63 @@ class TransformUtilsTest {
         }
 
         //Test no tags
-        connection.execute "DROP TABLE ${prefix}_way_tag"
-        connection.execute "CREATE TABLE ${prefix}_way_tag (id_way int, tag_key varchar, tag_value varchar)"
-        connection.execute "DROP TABLE ${prefix}_relation_tag"
-        connection.execute "CREATE TABLE ${prefix}_relation_tag (id_relation int, tag_key varchar, tag_value varchar)"
+        sql.execute """DROP TABLE ${prefix}_way_tag;
+        CREATE TABLE ${prefix}_way_tag (id_way int, tag_key varchar, tag_value varchar);
+        DROP TABLE ${prefix}_relation_tag;
+        CREATE TABLE ${prefix}_relation_tag (id_relation int, tag_key varchar, tag_value varchar);""".toString()
 
-        result = TransformUtils.toPolygonOrLine(polygonType, connection, prefix, epsgCode, tags, columnsToKeep)
+        result = TransformUtils.toPolygonOrLine(polygonType, sql, prefix, epsgCode, tags, columnsToKeep)
         assert result
 
-        result = TransformUtils.toPolygonOrLine(lineType, connection, prefix, epsgCode, tags, columnsToKeep)
+        result = TransformUtils.toPolygonOrLine(lineType, sql, prefix, epsgCode, tags, columnsToKeep)
         assert result
     }
 
     /**
      * Create a sample of OSM data
      *
-     * @param connection Connection where the data should be created.
+     * @param sql sql where the data should be created.
      * @param prefix Prefix of the OSM tables.
      */
-    private static void createData(def connection, def prefix){
-        connection.execute "CREATE TABLE ${prefix}_node_tag (id_node int, tag_key varchar, tag_value varchar)"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES(1, 'building', 'house')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES(1, 'material', 'concrete')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES(2, 'material', 'concrete')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES(3, 'water', 'lake')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES(4, 'water', 'lake')"
-        connection.execute "INSERT INTO ${prefix}_node_tag VALUES(4, 'building', 'house')"
+    private static void createData(def sql, def prefix){
+        sql.execute """CREATE TABLE ${prefix}_node_tag (id_node int, tag_key varchar, tag_value varchar);
+        INSERT INTO ${prefix}_node_tag VALUES(1, 'building', 'house');
+        INSERT INTO ${prefix}_node_tag VALUES(1, 'material', 'concrete');
+        INSERT INTO ${prefix}_node_tag VALUES(2, 'material', 'concrete');
+        INSERT INTO ${prefix}_node_tag VALUES(3, 'water', 'lake');
+        INSERT INTO ${prefix}_node_tag VALUES(4, 'water', 'lake');
+        INSERT INTO ${prefix}_node_tag VALUES(4, 'building', 'house');
 
-        connection.execute "CREATE TABLE ${prefix}_way_tag (id_way int, tag_key varchar, tag_value varchar)"
-        connection.execute "INSERT INTO ${prefix}_way_tag VALUES(1, 'building', 'house')"
-        connection.execute "INSERT INTO ${prefix}_way_tag VALUES(1, 'material', 'concrete')"
-        connection.execute "INSERT INTO ${prefix}_way_tag VALUES(1, 'water', 'lake')"
+        CREATE TABLE ${prefix}_way_tag (id_way int, tag_key varchar, tag_value varchar);
+        INSERT INTO ${prefix}_way_tag VALUES(1, 'building', 'house');
+        INSERT INTO ${prefix}_way_tag VALUES(1, 'material', 'concrete');
+        INSERT INTO ${prefix}_way_tag VALUES(1, 'water', 'lake');
 
-        connection.execute "CREATE TABLE ${prefix}_relation_tag (id_relation int, tag_key varchar, tag_value varchar)"
-        connection.execute "INSERT INTO ${prefix}_relation_tag VALUES(1, 'building', 'house')"
-        connection.execute "INSERT INTO ${prefix}_relation_tag VALUES(1, 'material', 'concrete')"
-        connection.execute "INSERT INTO ${prefix}_relation_tag VALUES(1, 'water', 'lake')"
+        CREATE TABLE ${prefix}_relation_tag (id_relation int, tag_key varchar, tag_value varchar);
+        INSERT INTO ${prefix}_relation_tag VALUES(1, 'building', 'house');
+        INSERT INTO ${prefix}_relation_tag VALUES(1, 'material', 'concrete');
+        INSERT INTO ${prefix}_relation_tag VALUES(1, 'water', 'lake');
 
-        connection.execute "CREATE TABLE ${prefix}_node(the_geom geometry, id_node int)"
-        connection.execute "INSERT INTO ${prefix}_node VALUES('POINT(0 0)', 1)"
-        connection.execute "INSERT INTO ${prefix}_node VALUES('POINT(10 0)', 2)"
-        connection.execute "INSERT INTO ${prefix}_node VALUES('POINT(0 10)', 3)"
-        connection.execute "INSERT INTO ${prefix}_node VALUES('POINT(10 10)', 4)"
+        CREATE TABLE ${prefix}_node(the_geom geometry, id_node int);
+        INSERT INTO ${prefix}_node VALUES('POINT(0 0)', 1);
+        INSERT INTO ${prefix}_node VALUES('POINT(10 0)', 2);
+        INSERT INTO ${prefix}_node VALUES('POINT(0 10)', 3);
+        INSERT INTO ${prefix}_node VALUES('POINT(10 10)', 4);
 
-        connection.execute "CREATE TABLE ${prefix}_way_node(id_way int, id_node int, node_order int)"
-        connection.execute "INSERT INTO ${prefix}_way_node VALUES(1, 1, 1)"
-        connection.execute "INSERT INTO ${prefix}_way_node VALUES(1, 2, 2)"
-        connection.execute "INSERT INTO ${prefix}_way_node VALUES(1, 3, 3)"
-        connection.execute "INSERT INTO ${prefix}_way_node VALUES(1, 4, 4)"
-        connection.execute "INSERT INTO ${prefix}_way_node VALUES(1, 1, 5)"
+        CREATE TABLE ${prefix}_way_node(id_way int, id_node int, node_order int);
+        INSERT INTO ${prefix}_way_node VALUES(1, 1, 1);
+        INSERT INTO ${prefix}_way_node VALUES(1, 2, 2);
+        INSERT INTO ${prefix}_way_node VALUES(1, 3, 3);
+        INSERT INTO ${prefix}_way_node VALUES(1, 4, 4);
+        INSERT INTO ${prefix}_way_node VALUES(1, 1, 5);
 
-        connection.execute "CREATE TABLE ${prefix}_way(id_way int)"
-        connection.execute "INSERT INTO ${prefix}_way VALUES(1)"
+        CREATE TABLE ${prefix}_way(id_way int);
+        INSERT INTO ${prefix}_way VALUES(1);
 
-        connection.execute "CREATE TABLE ${prefix}_relation(id_relation int)"
-        connection.execute "INSERT INTO ${prefix}_relation VALUES(1)"
+        CREATE TABLE ${prefix}_relation(id_relation int);
+        INSERT INTO ${prefix}_relation VALUES(1);
 
-        connection.execute "CREATE TABLE ${prefix}_way_member(id_relation int, id_way int, role varchar)"
-        connection.execute "INSERT INTO ${prefix}_way_member VALUES(1, 1, 'outer')"
+        CREATE TABLE ${prefix}_way_member(id_relation int, id_way int, role varchar);
+        INSERT INTO ${prefix}_way_member VALUES(1, 1, 'outer');""".toString()
     }
 }
