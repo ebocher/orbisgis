@@ -67,29 +67,17 @@ static SimpleFeatureType toSimpleFeatureType(String name, def fields, String uri
  */
 static String lookUpBinding(String alias) {
     Map map = [
-            ("geoscript.geom.LinearRing".toLowerCase()) : "org.locationtech.jts.geom.LinearRing",
             ("LinearRing".toLowerCase()) : "org.locationtech.jts.geom.LinearRing",
-            ("geoscript.geom.LineString".toLowerCase()) : "org.locationtech.jts.geom.LineString",
             ("LineString".toLowerCase()) : "org.locationtech.jts.geom.LineString",
-            ("geoscript.geom.MultiLineString".toLowerCase()) : "org.locationtech.jts.geom.MultiLineString",
             ("MultiLineString".toLowerCase()) : "org.locationtech.jts.geom.MultiLineString",
-            ("geoscript.geom.MultiPoint".toLowerCase()) : "org.locationtech.jts.geom.MultiPoint",
             ("MultiPoint".toLowerCase()) : "org.locationtech.jts.geom.MultiPoint",
-            ("geoscript.geom.MultiPolygon".toLowerCase()) : "org.locationtech.jts.geom.MultiPolygon",
             ("MultiPolygon".toLowerCase()) : "org.locationtech.jts.geom.MultiPolygon",
-            ("geoscript.geom.Point".toLowerCase()) : "org.locationtech.jts.geom.Point",
             ("Point".toLowerCase()) : "org.locationtech.jts.geom.Point",
-            ("geoscript.geom.Polygon".toLowerCase()) : "org.locationtech.jts.geom.Polygon",
             ("Polygon".toLowerCase()) : "org.locationtech.jts.geom.Polygon",
-            ("geoscript.geom.Geometry".toLowerCase()) : "org.locationtech.jts.geom.Geometry",
             ("Geometry".toLowerCase()) : "org.locationtech.jts.geom.Geometry",
-            ("geoscript.geom.CircularRing".toLowerCase()) : "org.geotools.geometry.jts.CircularRing",
             ("CircularRing".toLowerCase()) : "org.geotools.geometry.jts.CircularRing",
-            ("geoscript.geom.CircularString".toLowerCase()) : "org.geotools.geometry.jts.CircularString",
             ("CircularString".toLowerCase()) : "org.geotools.geometry.jts.CircularString",
-            ("geoscript.geom.CompoundCurve".toLowerCase()) : "org.geotools.geometry.jts.CompoundCurve",
             ("CompoundCurve".toLowerCase()) : "org.geotools.geometry.jts.CompoundCurve",
-            ("geoscript.geom.CompoundRing".toLowerCase()) : "org.geotools.geometry.jts.CompoundRing",
             ("CompoundRing".toLowerCase()) : "org.geotools.geometry.jts.CompoundRing",
             ("String".toLowerCase()) : "java.lang.String",
             ("Str".toLowerCase()) : "java.lang.String",
@@ -149,4 +137,12 @@ static boolean has(SimpleFeatureType schema, Map<String, Class<?>> columnMap) {
  */
 static AttributeDescriptor propertyMissing(SimpleFeatureType schema, String name) {
     return schema.getDescriptor(name)
+}
+
+/**
+ * Get the List of column names
+ * @return The List of column names
+ */
+static List<String> getColumnNames(SimpleFeatureType schema) {
+    return schema.getAttributeDescriptors().collect {it-> return it.name.localPart}
 }

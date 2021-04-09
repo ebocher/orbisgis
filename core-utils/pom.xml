@@ -63,18 +63,15 @@
             <artifactId>gt-cql</artifactId>
             <version>${geotools.version}</version>
         </dependency>
-        <!-- Test dependency -->
         <dependency>
             <groupId>org.geotools</groupId>
-            <artifactId>gt-shapefile</artifactId>
+            <artifactId>gt-referencing</artifactId>
             <version>${geotools.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.geotools</groupId>
             <artifactId>gt-epsg-hsql</artifactId>
             <version>${geotools.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.orbisgis</groupId>
@@ -89,6 +86,13 @@
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
+        </dependency>
+        <!-- Test dependency -->
+        <dependency>
+            <groupId>org.geotools</groupId>
+            <artifactId>gt-shapefile</artifactId>
+            <version>${geotools.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

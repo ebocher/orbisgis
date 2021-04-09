@@ -40,8 +40,18 @@ import groovy.sql.*
 import groovy.transform.Field
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.SimpleType
+import org.geotools.data.FeatureSource
+import org.geotools.data.Query
+import org.geotools.data.Transaction
+import org.geotools.data.simple.SimpleFeatureIterator
 import org.geotools.jdbc.JDBCDataStore
+import org.geotools.jdbc.VirtualTable
 import org.h2gis.utilities.JDBCUtilities
+import org.locationtech.jts.geom.Geometry
+import org.opengis.feature.simple.SimpleFeature
+import org.opengis.feature.simple.SimpleFeatureType
+import org.opengis.feature.type.AttributeDescriptor
+import org.opengis.feature.type.GeometryDescriptor
 
 import java.sql.*
 /**
@@ -2467,4 +2477,74 @@ static Collection<String> getTableNames( JDBCDataStore ds, String catalogPattern
         error("Unable to get the table names.", e);
     }
     return new ArrayList<>();
+}
+
+/**
+ * Return {@link FeatureSource} from select query
+ * @param ds a connexion to the database
+ * @param query the select sql query
+ * @return
+ */
+static FeatureSource select(JDBCDataStore ds, String query){
+    if(!query){
+        return null;
+    }
+    String vtName = null
+    // use a highly random name
+    do {
+        vtName = UUID.randomUUID().toString();
+    } while (Arrays.asList(ds.getTypeNames()).contains(vtName))
+
+        VirtualTable virtualTable = new VirtualTable(vtName, query);
+        ds.createVirtualTable(virtualTable)
+        SimpleFeatureType base = ds.getSchema(vtName);
+        List<String> geometryNames = new ArrayList<>()
+        for (AttributeDescriptor ad : base.getAttributeDescriptors()) {
+            if (ad instanceof GeometryDescriptor) {
+                geometryNames.add(ad.getLocalName());
+            }
+        }
+        // no geometries? Or, shall we not try to guess the geometries type and srid?
+        if (geometryNames.isEmpty() || !geometryNames) {
+            return ds.getFeatureSource(vtName);
+        }
+
+        // build a query to fetch the first rwo, we'll inspect the resulting
+        // geometryNames
+        Query q = new Query(vtName)
+        q.setPropertyNames(geometryNames)
+        q.setMaxFeatures(1);
+        SimpleFeatureIterator it = null;
+        SimpleFeature f = null;
+        try {
+            it = ds.getFeatureSource(vtName).getFeatures(q).features();
+            if (it.hasNext()) {
+                f = it.next();
+            }
+        } finally {
+            if (it != null) {
+                it.close();
+            }
+        }
+
+        // did we get more information?
+        if (f == null) {
+            return ds.getFeatureSource(vtName);
+        }
+        // if so, try to build an override feature type
+        Connection cx = null;
+        try {
+            for (String geomName : geometryNames) {
+                    Geometry g = (Geometry) f.getAttribute(geomName);
+                    if (g != null) {
+                        Class<?> binding = g.getClass()
+                        virtualTable.addGeometryMetadatata(geomName, binding, g.getSRID());
+                    }
+            }
+            return ds.getFeatureSource(vtName)
+
+        } catch (SQLException e) {
+            throw (IOException) new IOException(e.getMessage()).initCause(e);
+        }
+    return null
 }

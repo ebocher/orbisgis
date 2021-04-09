@@ -776,4 +776,17 @@ class JDBCDataStoreUtilsTest {
         }
         assert 3 == h2gis.ELEMENTS.features.size()
     }
-}
+
+    @Test
+    void featureFromSQL() {
+        def fs = h2gis.select("SELECT * FROM elements")
+        assert fs.count==3
+        assert  fs.getSchema().getColumnNames().containsAll(["ID", "NAME", "NUMBER"])
+        h2gis.execute("""DROP TABLE IF EXISTS geotable; 
+        CREATE TABLE geotable (id int, the_geom GEOMETRY(POINT, 4326));
+        INSERT INTO geotable VALUES(1, 'SRID=4326;POINT(0 1)'::GEOMETRY);""")
+        fs = h2gis.select("SELECT * FROM geotable")
+        assert fs.count==1
+        assert  fs.getSchema().getColumnNames().containsAll(["ID", "THE_GEOM"])
+    }
+    }

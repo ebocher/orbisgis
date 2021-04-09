@@ -43,7 +43,6 @@ import org.geotools.data.transform.TransformFactory
 import org.geotools.feature.FeatureCollection
 import org.geotools.filter.text.cql2.CQL
 import org.opengis.feature.Feature
-import org.opengis.feature.simple.SimpleFeatureType
 import org.opengis.feature.type.FeatureType
 import org.opengis.filter.Filter
 import org.apache.commons.io.FilenameUtils
@@ -53,7 +52,7 @@ import org.geotools.data.DataStoreFinder
 /**
  * Utility script used as extension module adding methods to {@link org.geotools.data.FeatureSource} class.
  *
- * @author Erwan Bocher (CNRS 2020)
+ * @author Erwan Bocher (CNRS 2020 - 2021)
  * @author Sylvain PALOMINOS (UBS chaire GEOTERA 2020)
  */
 
