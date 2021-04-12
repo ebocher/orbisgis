@@ -17,8 +17,8 @@ class POSTGISTest {
     private static final def POSTGIS_SYS_PROP = "test.postgis"
 
     // Some Database configuration data
-    private static final def PASSWORD = "orbisgis"
-    private static final def USER = "orbisgis"
+    private static final def PASSWORD = "org.orbisgis"
+    private static final def USER = "org.orbisgis"
     private static final def ESTIMATED_EXTENDS = true
     private static final def FETCH_SIZE = 100
     private static final def BATCH_INSERT_SIZE = 50

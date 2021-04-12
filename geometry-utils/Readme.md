@@ -13,7 +13,7 @@ Note :
 ### Groovy script
 
 ```groovy
-@GrabResolver(name='orbisgis', root='https://nexus.orbisgis.org/repository/orbisgis/')
+@GrabResolver(name='orbisgis', root='https://nexus.orbisgis.org/repository/orbisgis-snapshot/')
 @Grab(group='org.orbisgis', module='geometry-utils', version='0.0.1-SNAPSHOT')
 ```
 
@@ -25,7 +25,7 @@ To use the current snapshot add the following lines in the `pom`
 
 ```xml
 <dependency>
-  <groupId>org.orbisgis</groupId>
+  <groupId>org.org.orbisgis</groupId>
   <artifactId>geometry-utils</artifactId>
   <version>0.0.1-SNAPSHOT</version>
 </dependency>

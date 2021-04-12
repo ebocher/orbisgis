@@ -37,7 +37,7 @@ public class SQLToExpressionTest {
         assertEquals("((1+2)*3)", sqlToExpression.parseSingleExpression(expression).toString());
         expression = "AREA(the_geom)+(1 - GEOMLENGTH(AREA))/12";
         assertEquals("(Area([the_geom])+((1-geomLength([AREA]))/12))", sqlToExpression.parseSingleExpression(expression).toString());
-        expression = "the_geom = 'orbisgis'";
+        expression = "the_geom = 'org.orbisgis'";
         assertNull( sqlToExpression.parseSingleExpression(expression));
         expression = "AREA(the_geom), the_geom";
         assertNull( sqlToExpression.parseSingleExpression(expression));

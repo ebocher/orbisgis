@@ -108,11 +108,11 @@ static String linkedTable(JDBCDataStore ds, Map<String, String> params, String s
  * @param connection The DataStore.
  * @param path   The path of the file.
  * @param table  The name of the table created to store the file.
- * @param delete    True to delete the table if exists. Default to true.
+ * @param deleteTable    True to delete the table if exists. Default to true.
  * @throws java.sql.SQLException Exception throw on database error.
  */
-static String linkedFile(JDBCDataStore ds, String path, String table, boolean delete = false) throws SQLException {
-    return IOMethods.linkedFile(ds.connection, path, table, delete)
+static String linkedFile(JDBCDataStore ds, String path, String table, boolean deleteTable = false) throws SQLException {
+    return IOMethods.linkedFile(ds.connection, path, table, deleteTable)
 }
 
 /**

@@ -1,0 +1,6 @@
+moduleName=OrbisGIS Groovy JDBC datastore extension
+moduleVersion=1.0
+extensionClasses= org.orbisgis.SpatialFunctions, \
+  org.orbisgis.IOFunctins, \
+  org.orbisgis.BaseUtils
+staticExtensionClasses=

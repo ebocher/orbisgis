@@ -32,7 +32,7 @@
  *
  * For more information, please consult: <http://www.orbisgis.org/>
  * or contact directly:
- * info_at_ orbisgis.org
+ * info_at_ org.orbisgis.org
  */
 package org.orbisgis.datastore.jdbcutils
 
@@ -780,13 +780,13 @@ class JDBCDataStoreUtilsTest {
     @Test
     void featureFromSQL() {
         def fs = h2gis.select("SELECT * FROM elements")
-        assert fs.count==3
-        assert  fs.getSchema().getColumnNames().containsAll(["ID", "NAME", "NUMBER"])
+        assert fs.count == 3
+        assert fs.getSchema().getColumnNames().containsAll(["ID", "NAME", "NUMBER"])
         h2gis.execute("""DROP TABLE IF EXISTS geotable; 
         CREATE TABLE geotable (id int, the_geom GEOMETRY(POINT, 4326));
         INSERT INTO geotable VALUES(1, 'SRID=4326;POINT(0 1)'::GEOMETRY);""")
         fs = h2gis.select("SELECT * FROM geotable")
-        assert fs.count==1
-        assert  fs.getSchema().getColumnNames().containsAll(["ID", "THE_GEOM"])
+        assert fs.count == 1
+        assert fs.getSchema().getColumnNames().containsAll(["ID", "THE_GEOM"])
     }
     }

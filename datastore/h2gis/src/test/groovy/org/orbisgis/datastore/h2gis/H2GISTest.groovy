@@ -4,6 +4,7 @@ import org.apache.commons.dbcp.BasicDataSource
 import org.junit.jupiter.api.Test
 import org.locationtech.jts.geom.Geometry
 import org.locationtech.jts.geom.Point
+import org.locationtech.jts.geom.Polygon
 
 import java.sql.SQLException
 import java.sql.Time
@@ -207,6 +208,25 @@ class H2GISTest {
         def concat = ""
         h2GIS.getFeatureSource("H2GIS_IMPORTED").eachFeature { row -> concat += "$row.GID $row.THE_GEOM\n" }
         assertEquals("1 POINT (10 10)\n2 POINT (1 1)\n", concat)
+    }
+
+
+    @Test
+    void featureFromSQL() {
+        def h2GIS = H2GIS.open('./target/loadH2GIS')
+        h2GIS.execute("""
+                DROP TABLE IF EXISTS h2gis, h2gis_imported;
+                CREATE TABLE h2gis (gid int, the_geom geometry(point));
+                INSERT INTO h2gis VALUES (1, 'POINT(10 10)'::GEOMETRY), (2, 'POINT(1 1)'::GEOMETRY);
+        """)
+        h2GIS.export("h2gis", "target/h2gis_imported.shp", true);
+        h2GIS.linkedFile("target/h2gis_imported.shp", "new_table", true);
+        def fs = h2GIS.select("SELECT ST_BUFFER(the_geom, 10) AS THE_GEOM FROM new_table limit 1")
+        assert fs.count == 1
+        fs.eachFeature {it ->
+            assert it.THE_GEOM instanceof Polygon
+        }
+        assert ["THE_GEOM"]==fs.getSchema().getColumnNames()
     }
 
 }

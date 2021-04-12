@@ -20,7 +20,7 @@ import org.geotools.referencing.CRS
  * @param fields a string representation of the columns.
  * @param uri The namespace uri
  */
-static SimpleFeatureType toSimpleFeatureType(String name, String fields, String uri = "http://orbisgis.org/feature"){
+static SimpleFeatureType toSimpleFeatureType(String name, String fields, String uri = "http://org.orbisgis.org/feature"){
    return DataUtilities.createType(uri, name, fields)
 }
 
@@ -32,7 +32,7 @@ static SimpleFeatureType toSimpleFeatureType(String name, String fields, String 
  * @return {@link SimpleFeatureType}
  * @author Jared Erickson, source : https://github.com/geoscript/geoscript-groovy
  */
-static SimpleFeatureType toSimpleFeatureType(String name, def fields, String uri = "http://orbisgis.org/feature"){
+static SimpleFeatureType toSimpleFeatureType(String name, def fields, String uri = "http://org.orbisgis.org/feature"){
     SimpleFeatureTypeBuilder builder = new SimpleFeatureTypeBuilder()
     builder.setName(new NameImpl(name))
     if (uri != null) {
