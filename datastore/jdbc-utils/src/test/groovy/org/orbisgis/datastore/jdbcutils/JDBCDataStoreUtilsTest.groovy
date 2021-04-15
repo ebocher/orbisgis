@@ -557,6 +557,7 @@ class JDBCDataStoreUtilsTest {
         assert 1 == row.get("ID")
         assert 'Simple Name' == row.get("NAME")
         assert 2846 == row.get("NUMBER")
+        h2gis.drop("INSERTIONS")
     }
 
     @Test
@@ -647,6 +648,8 @@ class JDBCDataStoreUtilsTest {
         assert 2 == row.get("ID")
         assert 'Simple Name' == row.get("NAME")
         assert 2846 == row.get("NUMBER")
+
+        h2gis.drop("INSERTIONS")
     }
 
     @Test
@@ -730,6 +733,8 @@ class JDBCDataStoreUtilsTest {
         postgis.call("{? = CALL HouseSwap(?, ?)}", [out.VARCHAR, "Guillaume", "Paul"]) { assert "Swap done" == it }
         row = postgis.firstRow("SELECT * FROM PERSON WHERE location_id=1")
         assert 'Paul' == row.get("firstname")
+
+        postgis.drop("person")
     }
 
     @Test
@@ -776,6 +781,7 @@ class JDBCDataStoreUtilsTest {
             st.addBatch([3, 'S N', 9272])
         }
         assert 3 == h2gis.ELEMENTS.features.size()
+        h2gis.drop("INSERTIONS")
     }
 
     @Test
@@ -789,6 +795,7 @@ class JDBCDataStoreUtilsTest {
         fs = h2gis.select("SELECT * FROM geotable")
         assert fs.count == 1
         assert fs.getSchema().getColumnNames().containsAll(["ID", "THE_GEOM"])
+        h2gis.drop("GEOTABLE")
     }
 
     @Test
@@ -802,11 +809,11 @@ class JDBCDataStoreUtilsTest {
         INSERT INTO mytable(id, name, number) VALUES (1, 'Name', 5432);"""
         h2gis.execute(sql)
         assert h2gis.has("MYTABLE")
-        assert h2gis.getTableNames().size()==2
+        h2gis.drop("MYTABLE")
     }
 
     @Test
-    void loadFeatureSourceTest() {
+    void saveLoadFeatureSourceTest() {
         def sql = """DROP TABLE IF EXISTS mygeotable;
         CREATE TABLE mygeotable (
                                 id serial,
@@ -817,10 +824,12 @@ class JDBCDataStoreUtilsTest {
         INSERT INTO mygeotable VALUES (1, 'Name', 5432, 'SRID=4326;POINT(10 10)'::GEOMETRY);"""
         h2gis.execute(sql)
         h2gis.getFeatureSource("MYGEOTABLE").save("target/mygeotable.shp", true)
+        h2gis.execute("DROP TABLE IF EXISTS mygeotable")
         FeatureSource fs = "target/mygeotable.shp".toFeatureSource()
         assert fs.count==1
-        h2gis.load(fs)
-        assert  h2gis.has("mygeotable")
+        h2gis.load(fs, "orbisgis")
+        assert  h2gis.has("orbisgis")
+        h2gis.drop("orbisgis")
     }
 
     @Test
@@ -831,6 +840,7 @@ class JDBCDataStoreUtilsTest {
         assert  h2gis.has("hedgerow")
         fs =  h2gis.getFeatureSource("hedgerow")
         assert fs.count==994
+        h2gis.drop("hedgerow")
     }
 
     }

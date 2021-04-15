@@ -43,7 +43,6 @@ import groovy.transform.stc.SimpleType
 import org.geotools.data.DataUtilities
 import org.geotools.data.DefaultTransaction
 import org.geotools.data.FeatureSource
-import org.geotools.data.FeatureWriter
 import org.geotools.data.Query
 import org.geotools.data.Transaction
 import org.geotools.data.simple.SimpleFeatureCollection
@@ -52,16 +51,11 @@ import org.geotools.data.simple.SimpleFeatureSource
 import org.geotools.data.simple.SimpleFeatureStore
 import org.geotools.jdbc.JDBCDataStore
 import org.geotools.jdbc.VirtualTable
-import org.h2gis.utilities.JDBCUtilities
-import org.h2gis.utilities.TableLocation
-import org.h2gis.utilities.dbtypes.DBTypes
-import org.h2gis.utilities.dbtypes.DBUtils
 import org.locationtech.jts.geom.Geometry
 import org.opengis.feature.simple.SimpleFeature
 import org.opengis.feature.simple.SimpleFeatureType
 import org.opengis.feature.type.AttributeDescriptor
 import org.opengis.feature.type.GeometryDescriptor
-import org.opengis.filter.Filter
 
 import java.sql.*
 
@@ -2385,7 +2379,13 @@ static int[] withBatch(JDBCDataStore ds, int batchSize, String sql,
  * @param name the table name
  */
 static boolean has(JDBCDataStore ds, String tableName) {
-    JDBCUtilities.tableExists(getConnection(ds), ds.getSQLDialect().escapeName(tableName))
+    def cx = getConnection(ds)
+    try (Statement statement = cx.createStatement()) {
+        statement.execute("SELECT * FROM " + ds.getSQLDialect().escapeName(tableName) + " LIMIT 0;")
+        return true
+    } catch (SQLException ex) {
+        return false
+    }
 }
 
 /**
@@ -2440,17 +2440,22 @@ static FeatureSource load(JDBCDataStore ds, FeatureSource fs, String tableName =
     if (batchSize <= 0) {
         return
     }
-    SimpleFeatureType outSchema
+    SimpleFeatureType inputSchema = fs.getSchema()
     if(has(ds, tableName)){
         if(delete){
             ds.removeSchema(tableName)
-            ds.createSchema(fs.getSchema())
+            ds.createSchema(inputSchema)
         }else {
             warn("The output table ${tableName} already exists")
             return
         }
     }else {
-        ds.createSchema(fs.getSchema())
+        if(tableName == inputTableName) {
+            ds.createSchema(inputSchema)
+        }
+        else{
+            ds.createSchema(inputSchema.createWithNewName(tableName))
+        }
     }
 
     int oldBatch = ds.getBatchInsertSize()
@@ -2479,29 +2484,6 @@ static FeatureSource load(JDBCDataStore ds, FeatureSource fs, String tableName =
     ds.setBatchInsertSize(oldBatch)
 }
 
-
-/**
- * Return the list of the table name corresponding to the given patterns and types.
- *
- * @param catalogPattern Pattern of the catalog name.
- * @param schemaPattern Pattern of the schema name.
- * @param namePattern Pattern of the table name.
- * @param types Type of the table.
- * @return List of the table corresponding to the given patterns and types.
- */
-static Collection<String> getTableNames(JDBCDataStore ds, String catalogPattern, String schemaPattern,
-                                        String namePattern, String... types) {
-    String[] array = null;
-    if (types != null) {
-        array = Arrays.stream(types).filter(Objects::nonNull).map(Enum::toString).toArray(String[]::new);
-    }
-    try {
-        return JDBCUtilities.getTableNames(getConnection(ds), catalogPattern, schemaPattern, namePattern, types);
-    } catch (SQLException e) {
-        error("Unable to get the table names.", e);
-    }
-    return new ArrayList<>();
-}
 
 /**
  * Return {@link FeatureSource} from select query
@@ -2554,7 +2536,6 @@ static FeatureSource select(JDBCDataStore ds, String query) {
         return ds.getFeatureSource(vtName);
     }
     // if so, try to build an override feature type
-    Connection cx = null;
     try {
         for (String geomName : geometryNames) {
             Geometry g = (Geometry) f.getAttribute(geomName);

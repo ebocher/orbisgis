@@ -21,7 +21,6 @@
                 <module>datastore</module>
                 <module>dataframe</module>
                 <module>gisql</module>
-            <module>shapefile</module>
         </modules>
 
         <!-- Properties -->
