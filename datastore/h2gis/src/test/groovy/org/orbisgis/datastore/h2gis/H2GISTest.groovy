@@ -210,9 +210,8 @@ class H2GISTest {
         assertEquals("1 POINT (10 10)\n2 POINT (1 1)\n", concat)
     }
 
-
     @Test
-    void featureFromSQL() {
+    void featureFromSQLQuery() {
         def h2GIS = H2GIS.open('./target/loadH2GIS')
         h2GIS.execute("""
                 DROP TABLE IF EXISTS h2gis, h2gis_imported;

@@ -146,3 +146,22 @@ static AttributeDescriptor propertyMissing(SimpleFeatureType schema, String name
 static List<String> getColumnNames(SimpleFeatureType schema) {
     return schema.getAttributeDescriptors().collect {it-> return it.name.localPart}
 }
+
+/**
+ * Create a new SimpleFeatureType with a new type name
+ * @param schema
+ * @param typeName
+ * @return
+ */
+static SimpleFeatureType createWithNewName(SimpleFeatureType featureType, String newTypeName) {
+    SimpleFeatureTypeBuilder tb = new SimpleFeatureTypeBuilder()
+    tb.setName(newTypeName)
+    String uriName = featureType.getName().getNamespaceURI()
+    if(uriName) {
+        tb.setNamespaceURI(uriName)
+    }
+    tb.setCRS(featureType.getCoordinateReferenceSystem())
+    tb.addAll(featureType.getAttributeDescriptors());
+    tb.setDefaultGeometry(featureType.getGeometryDescriptor().getLocalName())
+    return tb.buildFeatureType()
+}

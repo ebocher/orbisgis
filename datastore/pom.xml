@@ -19,6 +19,7 @@
         <module>jdbc-utils</module>
         <module>h2gis</module>
         <module>postgis</module>
+        <module>shapefile</module>
     </modules>
 
     <!-- Properties -->

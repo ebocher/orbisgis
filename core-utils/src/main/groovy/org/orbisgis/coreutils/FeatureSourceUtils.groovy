@@ -36,14 +36,26 @@
  */
 package org.orbisgis.coreutils
 
+import org.geotools.data.DataStore
+import org.geotools.data.DefaultTransaction
 import org.geotools.data.FeatureSource
+import org.geotools.data.FileDataStoreFactorySpi
+import org.geotools.data.FileDataStoreFinder
 import org.geotools.data.Query
+import org.geotools.data.Transaction
+import org.geotools.data.simple.SimpleFeatureCollection
+import org.geotools.data.simple.SimpleFeatureSource
+import org.geotools.data.simple.SimpleFeatureStore
 import org.geotools.data.transform.Definition
 import org.geotools.data.transform.TransformFactory
 import org.geotools.feature.FeatureCollection
 import org.geotools.filter.text.cql2.CQL
+import org.geotools.util.URLs
 import org.opengis.feature.Feature
+import org.opengis.feature.simple.SimpleFeature
+import org.opengis.feature.simple.SimpleFeatureType
 import org.opengis.feature.type.FeatureType
+import org.opengis.feature.type.Name
 import org.opengis.filter.Filter
 import org.apache.commons.io.FilenameUtils
 import org.geotools.data.DataStoreFinder
@@ -190,6 +202,69 @@ static void eachFeature(FeatureSource fs, String filter = null , Closure closure
             }
         } finally {
             featureIterator.close()
+        }
+    }
+}
+
+
+/**
+ * Save a FeatureSource to a file
+ * @param fs
+ * @param path
+ * @param delete
+ */
+static void save(FeatureSource fs, String path, boolean delete =false){
+    if(fs==null){
+        warn("The featureSource is null")
+        return
+    }
+    File file =  new File(path)
+    String extension = FilenameUtils.getExtension(path)
+    Map<String, java.io.Serializable> creationParams = new HashMap<>()
+    creationParams.put("url", URLs.fileToUrl(file))
+    FileDataStoreFactorySpi factory = FileDataStoreFinder.getDataStoreFactory(extension)
+    if(factory==null){
+        warn("Cannot find a driver to save the file ${path}")
+        return
+    }
+    DataStore dataStore = factory.createNewDataStore(creationParams)
+    Name typeName = dataStore.getNames()[0]
+    SimpleFeatureType outSchema
+    try{
+     outSchema = dataStore.getSchema(typeName)
+    }catch (Exception ex) {
+        //Nothing to do
+    }
+    if(outSchema!=null){
+        if(delete){
+        dataStore.removeSchema(typeName)
+        dataStore.createSchema(fs.getSchema())
+        }else {
+            warn("The output file ${path} already exists")
+            return
+        }
+    }else {
+        dataStore.createSchema(fs.getSchema())
+    }
+    try (Transaction t = new DefaultTransaction()) {
+        SimpleFeatureCollection collection = fs.getFeatures()
+        SimpleFeatureSource featureSourceOut =  dataStore.getFeatureSource(typeName)
+        if(!SimpleFeatureStore.class.isInstance(featureSourceOut)) {
+            throw new Exception(typeName + " does not support read/write access");
+        } else {
+            SimpleFeatureStore featureStore =  (SimpleFeatureStore) featureSourceOut
+            try {
+                    featureStore.addFeatures(collection)
+                    t.commit()
+            } catch (IOException eek) {
+                eek.printStackTrace()
+                try {
+                    t.rollback();
+                } catch (IOException doubleEeek) {
+                    // rollback failed?
+                }
+            }
+
         }
     }
 }

@@ -38,6 +38,7 @@ package org.orbisgis.datastore.jdbcutils
 
 
 import org.geotools.data.DataStoreFinder
+import org.geotools.data.FeatureSource
 import org.geotools.jdbc.JDBCDataStore
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -789,4 +790,47 @@ class JDBCDataStoreUtilsTest {
         assert fs.count == 1
         assert fs.getSchema().getColumnNames().containsAll(["ID", "THE_GEOM"])
     }
+
+    @Test
+    void hasTests() {
+        def sql = """DROP TABLE IF EXISTS mytable;
+        CREATE TABLE mytable (
+                                id serial,
+                               name varchar(255),
+                                number int
+                          );
+        INSERT INTO mytable(id, name, number) VALUES (1, 'Name', 5432);"""
+        h2gis.execute(sql)
+        assert h2gis.has("MYTABLE")
+        assert h2gis.getTableNames().size()==2
+    }
+
+    @Test
+    void loadFeatureSourceTest() {
+        def sql = """DROP TABLE IF EXISTS mygeotable;
+        CREATE TABLE mygeotable (
+                                id serial,
+                               name varchar(255),
+                                number int,
+                                the_geom GEOMETRY(POINT, 4326)
+                          );
+        INSERT INTO mygeotable VALUES (1, 'Name', 5432, 'SRID=4326;POINT(10 10)'::GEOMETRY);"""
+        h2gis.execute(sql)
+        h2gis.getFeatureSource("MYGEOTABLE").save("target/mygeotable.shp", true)
+        FeatureSource fs = "target/mygeotable.shp".toFeatureSource()
+        assert fs.count==1
+        h2gis.load(fs)
+        assert  h2gis.has("mygeotable")
+    }
+
+    @Test
+    void loadShapeFileTest() {
+        def url = this.class.getResource("hedgerow.shp")
+        def fs = url.toFeatureSource()
+        h2gis.load(fs)
+        assert  h2gis.has("hedgerow")
+        fs =  h2gis.getFeatureSource("hedgerow")
+        assert fs.count==994
+    }
+
     }

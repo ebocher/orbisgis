@@ -93,4 +93,16 @@ class FeatureSourceUtilsTest {
             assert  1246 == feature.new_gid
         }
     }
+
+    @Test
+    void saveFeatureSourceTest() {
+        def url = this.class.getResource("hedgerow.shp")
+        def fs = url.toFeatureSource()
+        assert fs
+        assert fs in FeatureSource
+        assert 994 == fs.count
+        fs.save("target/myfeaturesource.shp", true)
+        def outFS = "target/myfeaturesource.shp".toFeatureSource()
+        assert 994 == outFS.count
+    }
 }
